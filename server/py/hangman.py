@@ -26,34 +26,69 @@ class HangmanGameState:
 
 
 class Hangman(Game):
-
     def __init__(self) -> None:
-        """ Important: Game initialization also requires a set_state call to set the 'word_to_guess' """
-        pass
+        """Game initialization also requires a set_state call to set the 'word_to_guess'."""
+        self.state: Optional[HangmanGameState] = None
 
     def get_state(self) -> HangmanGameState:
-        """ Set the game to a given state """
-        pass
+        """Get the complete, unmasked game state."""
+        if not self.state:
+            raise ValueError("Game state has not been set.")
+        return self.state
 
     def set_state(self, state: HangmanGameState) -> None:
-        """ Get the complete, unmasked game state """
-        pass
+        """Set the game state."""
+        self.state = state
 
     def print_state(self) -> None:
-        """ Print the current game state """
-        pass
+        """Print the current game state."""
+        if not self.state:
+            print("Game state has not been set.")
+            return
+        print(f"Word to guess: {self.state.word_to_guess}")
+        print(f"Phase: {self.state.phase}")
+        print(f"Guesses: {', '.join(self.state.guesses)}")
+        print(f"Incorrect guesses: {', '.join(self.state.incorrect_guesses)}")
 
     def get_list_action(self) -> List[GuessLetterAction]:
-        """ Get a list of possible actions for the active player """
-        pass
+        """Get a list of possible actions for the active player."""
+        if not self.state:
+            raise ValueError("Game state has not been set.")
+        return [GuessLetterAction(chr(i)) for i in range(97, 123)]  # a-z actions
 
     def apply_action(self, action: GuessLetterAction) -> None:
-        """ Apply the given action to the game """
-        pass
+        """Apply the given action to the game."""
+        if not self.state:
+            raise ValueError("Game state has not been set.")
+        letter = action.letter.lower()
+        if letter in self.state.guesses or letter in self.state.incorrect_guesses:
+            print(f"The letter '{letter}' has already been guessed.")
+            return
+
+        if letter in self.state.word_to_guess.lower():
+            self.state.guesses.append(letter)
+        else:
+            self.state.incorrect_guesses.append(letter)
+
+        if all(char.lower() in self.state.guesses for char in self.state.word_to_guess if char.isalpha()):
+            self.state.phase = GamePhase.FINISHED
 
     def get_player_view(self, idx_player: int) -> HangmanGameState:
-        """ Get the masked state for the active player (e.g. the oppontent's cards are face down)"""
-        pass
+        """Get the masked state for the active player."""
+        if not self.state:
+            raise ValueError("Game state has not been set.")
+
+        masked_word = ''.join(
+            char if char.lower() in self.state.guesses else '_'
+            for char in self.state.word_to_guess
+        )
+        return HangmanGameState(
+            word_to_guess=masked_word,
+            phase=self.state.phase,
+            guesses=self.state.guesses,
+            incorrect_guesses=self.state.incorrect_guesses
+        )
+
 
 
 class RandomPlayer(Player):
@@ -66,7 +101,18 @@ class RandomPlayer(Player):
 
 
 if __name__ == "__main__":
-
+    # Example usage
     game = Hangman()
     game_state = HangmanGameState(word_to_guess='DevOps', phase=GamePhase.SETUP, guesses=[], incorrect_guesses=[])
     game.set_state(game_state)
+
+    # Simulate player view
+    print("Full game state:")
+    game.print_state()
+
+    print("\nMasked player view:")
+    player_view = game.get_player_view(idx_player=0)
+    print(f"Word to guess (masked): {player_view.word_to_guess}")
+    print(f"Phase: {player_view.phase}")
+    print(f"Guesses: {', '.join(player_view.guesses)}")
+    print(f"Incorrect guesses: {', '.join(player_view.incorrect_guesses)}")
