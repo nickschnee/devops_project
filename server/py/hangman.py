@@ -91,7 +91,7 @@ class Hangman(Game):
 
 
 
-class RandomPlayer(Player):
+class RandomPlayer(Player):  
 
     def select_action(self, state: HangmanGameState, actions: List[GuessLetterAction]) -> Optional[GuessLetterAction]:
         """ Given masked game state and possible actions, select the next action """
