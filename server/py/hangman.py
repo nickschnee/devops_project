@@ -45,6 +45,17 @@ class Hangman(Game):
         if not self.state:
             print("Game state has not been set.")
             return
+        # Calculate the masked word with correct guesses revealed
+        word_to_guess = ''.join([letter if letter in self.state.guesses else '_' for letter in self.state.word_to_guess])
+        self.state.word_to_guess = word_to_guess
+        # Calculate remaining attempts 
+        remaining_attempts = self.state.max_attempts - len(self.state.incorrect_guesses)
+        self.state.phase = remaining_attempts
+        # Determine which guesses are correct and which are incorrect
+        correct_guesses = [guess for guess in self.state.guesses if guess in self.state.word_to_guess]
+        self.state.guesses = correct_guesses
+        incorrect_guesses = [guess for guess in self.state.guesses if guess not in self.state.word_to_guess]
+        self.state.incorrect_guesses = incorrect_guesses
         print(f"Word to guess: {self.state.word_to_guess}")
         print(f"Phase: {self.state.phase}")
         print(f"Guesses: {', '.join(self.state.guesses)}")
