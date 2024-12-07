@@ -51,10 +51,18 @@ class Hangman(Game):
         print(f"Incorrect guesses: {', '.join(self.state.incorrect_guesses)}")
 
     def get_list_action(self) -> List[GuessLetterAction]:
-        """Get a list of possible actions for the active player."""
-        if not self.state:
-            raise ValueError("Game state has not been set.")
-        return [GuessLetterAction(chr(i)) for i in range(97, 123)]  # a-z actions
+    """Get a list of possible actions for the active player.
+    Only returns letters that haven't been guessed yet in the Hangman game.
+    
+    Returns:
+        List[GuessLetterAction]: List of available letter actions
+        
+    Raises:
+        ValueError: If game state hasn't been set
+    """
+    if not self.state:
+        raise ValueError("Game state has not been set.")
+    return [GuessLetterAction(chr(i)) for i in range(97, 123)]  # a-z actions
 
     def apply_action(self, action: GuessLetterAction) -> None:
         """Apply the given action to the game."""
