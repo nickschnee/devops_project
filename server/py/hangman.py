@@ -66,7 +66,8 @@ class Hangman(Game):
     used_letters = set(self.state.guesses + self.state.incorrect_guesses)
     available_actions = []
     for letter in 'abcdefghijklmnopqrstuvwxyz':
-        available_actions.append(GuessLetterAction(letter))
+        if letter not in used_letters:
+            available_actions.append(GuessLetterAction(letter))
     return available_actions
 
     def apply_action(self, action: GuessLetterAction) -> None:
