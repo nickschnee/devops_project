@@ -62,7 +62,10 @@ class Hangman(Game):
     """
     if not self.state:
         raise ValueError("Game state has not been set.")
-    return [GuessLetterAction(chr(i)) for i in range(97, 123)]  # a-z actions
+    
+    # Track all used letters
+    used_letters = set(self.state.guesses + self.state.incorrect_guesses)
+    return [GuessLetterAction(chr(i)) for i in range(97, 123)]  
 
     def apply_action(self, action: GuessLetterAction) -> None:
         """Apply the given action to the game."""
