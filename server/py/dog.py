@@ -81,14 +81,14 @@ class GameState(BaseModel):
     idx_player_started: int            # index of player that started the round
     idx_player_active: int             # index of active player in round
     list_player: List[PlayerState]     # list of players
-    list_card_draw: List[Card]      # list of cards to draw
-    list_card_discard: List[Card]   # list of cards discarded
+    list_card_draw: List[Card]         # list of cards to draw
+    list_card_discard: List[Card]      # list of cards discarded
     card_active: Optional[Card]        # active card (for 7 and JKR with sequence of actions)
 
 class Dog(Game):
     def __init__(self) -> None:
         """Game initialization"""
-        self.state = GameState(
+        self._state = GameState(
             cnt_player=4,
             phase=GamePhase.RUNNING,
             cnt_round=1,
@@ -110,7 +110,7 @@ class Dog(Game):
         random.shuffle(all_cards)
         
         # Initialize players
-        self.state.list_player = []
+        self._state.list_player = []
         for i in range(4):
             # Deal 6 cards to each player
             player_cards = all_cards[i * 6:(i + 1) * 6]
@@ -127,19 +127,27 @@ class Dog(Game):
                 list_card=player_cards,
                 list_marble=player_marbles
             )
-            self.state.list_player.append(player)
+            self._state.list_player.append(player)
         
         # Remaining cards go to draw pile
-        self.state.list_card_draw = all_cards[24:]
-        self.state.list_card_discard = []
+        self._state.list_card_draw = all_cards[24:]
+        self._state.list_card_discard = []
+        
+        # Reset game state
+        self._state.cnt_round = 1
+        self._state.bool_game_finished = False
+        self._state.bool_card_exchanged = False
+        self._state.idx_player_started = 0
+        self._state.idx_player_active = 0
+        self._state.card_active = None
 
     def get_state(self) -> GameState:
         """Get the complete, unmasked game state"""
-        return self.state
+        return self._state
 
     def set_state(self, state: GameState) -> None:
         """Set the game to a given state"""
-        self.state = state
+        self._state = state
 
     def print_state(self) -> None:
         """ Print the current game state """
@@ -159,14 +167,8 @@ class Dog(Game):
 
 
 class RandomPlayer(Player):
-
     def select_action(self, state: GameState, actions: List[Action]) -> Optional[Action]:
         """ Given masked game state and possible actions, select the next action """
         if len(actions) > 0:
             return random.choice(actions)
         return None
-
-
-if __name__ == '__main__':
-
-    game = Dog()
