@@ -12,7 +12,7 @@ class Card(BaseModel):
 
 
 class Marble(BaseModel):
-    pos: str       # position on board (0 to 95)
+    pos: int       # position on board (0 to 95)
     is_save: bool  # true if marble was moved out of kennel and was not yet moved
 
 
@@ -115,10 +115,10 @@ class Dog(Game):
             # Deal 6 cards to each player
             player_cards = all_cards[i * 6:(i + 1) * 6]
             
-            # Create 4 marbles for each player
+            # Create 4 marbles for each player, starting in kennel (pos 64-67)
             player_marbles = [
-                Marble(pos=str(i), is_save=False) 
-                for i in range(4)
+                Marble(pos=64 + j, is_save=False) 
+                for j in range(4)
             ]
             
             # Create player state
@@ -186,17 +186,19 @@ class Dog(Game):
 
         # Handle moving marble out of kennel
         if action.pos_from == 64 and action.pos_to == 0:  # Moving from kennel to start
-            # Find marble in kennel
+            # Find first marble in kennel (positions 64-67)
             for marble in player.list_marble:
                 if int(marble.pos) >= 64:  # Convert string pos to int for comparison
                     # Move marble to start position
-                    marble.pos = str(action.pos_to)  # Convert back to string when assigning
-                    # Set as save since it just moved to start
+                    marble.pos = action.pos_to  # Use action.pos_to instead of hardcoding
                     marble.is_save = True
+                    
+                    # Remove used card from player's hand
+                    player.list_card = [
+                        card for card in player.list_card 
+                        if not (card.suit == action.card.suit and card.rank == action.card.rank)
+                    ]
                     break
-
-            # Remove used card from player's hand
-            player.list_card = [c for c in player.list_card if c != action.card]
 
     def get_player_view(self, idx_player: int) -> GameState:
         """ Get the masked state for the active player (e.g. the oppontent's cards are face down)"""

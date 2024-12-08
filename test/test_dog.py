@@ -164,6 +164,45 @@ class TestDogBenchmark:
         hint += f'\n{self.get_list_action_as_str(list_action_found)}'
         assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
 
+    def test_move_out_of_kennel_1(self):
+        """Test 006: Test move out of kennel without marble on start [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♦', rank='A'), Card(suit='♣', rank='10')]
+        self.game_server.set_state(state)
+        str_state_1 = str(state)
+
+        action = Action(card=Card(suit='♦', rank='A'), pos_from=64, pos_to=0)
+        self.game_server.apply_action(action)
+        str_action = f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_state_2 = str(state)
+
+        marble_found = False
+        marble_save = False
+        player = state.list_player[idx_player_active]
+
+        idx_marble = self.get_idx_marble(player=player, pos=0)
+        if idx_marble != -1:
+            marble_found = True
+            marble_save = player.list_marble[idx_marble].is_save
+
+        hint = str_state_1 + str_action + str_state_2
+        hint += 'Error: Player 1 must end with a marble at pos=0'
+        assert marble_found, hint
+        hint = str_state_1 + str_action + str_state_2
+        hint += 'Error: Status of marble at pos=0 must be "is_save"=True'
+        assert marble_save, hint
+        
     def get_idx_marble(self, player: PlayerState, pos: int) -> int:
         for idx_marble, marble in enumerate(player.list_marble):
             if marble.pos == pos:
