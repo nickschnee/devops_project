@@ -160,21 +160,24 @@ class Dog(Game):
 
         actions = []
         player = self._state.list_player[self._state.idx_player_active]
-        
-        # Check for start cards that can move marbles out of kennel
+
+        # Check if start position is already occupied by the player's own marble
+        start_occupied = any(marble.pos == 0 for marble in player.list_marble)
+
+        # Check for start cards that can move marbles out of kennel only if start is free
         for card in player.list_card:
             # Start cards are: Ace, King, and Joker
-            if card.rank in ['A', 'K', 'JKR']:
-                # Create action with all required fields
+            if card.rank in ['A', 'K', 'JKR'] and not start_occupied:
                 action = Action(
                     card=card,
-                    pos_from=64,
-                    pos_to=0,
+                    pos_from=64,  # Kennel position
+                    pos_to=0,     # Start position
                     card_swap=None
                 )
                 actions.append(action)
 
         return actions
+
 
     def apply_action(self, action: Action) -> None:
         """Apply the given action to the game state"""

@@ -203,11 +203,40 @@ class TestDogBenchmark:
         hint += 'Error: Status of marble at pos=0 must be "is_save"=True'
         assert marble_save, hint
         
+    # this is a helper function the test needs to run
+        
     def get_idx_marble(self, player: PlayerState, pos: int) -> int:
         for idx_marble, marble in enumerate(player.list_marble):
             if marble.pos == pos:
                 return idx_marble
         return -1
+    
+    def test_move_out_of_kennel_2(self):
+        """Test 007: Test move out of kennel with self-blocking on start [1 point]"""
 
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♦', rank='A')]
+        player.list_marble[0].pos = 0
+        player.list_marble[0].is_save = True
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action = self.game_server.get_list_action()
+        list_action_found = [action for action in list_action if action.pos_from >= 64 and action.pos_from < 68]
+        list_action_expected = []
+
+        hint = str_state
+        hint += f'Error: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+        hint += '\nHint: Player 1\'s marbel on start is blocking.'
+        assert len(list_action_found) == len(list_action_expected), hint
+    
 if __name__ == '__main__':
     pytest.main(['-v', __file__])
