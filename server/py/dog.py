@@ -81,24 +81,65 @@ class GameState(BaseModel):
     idx_player_started: int            # index of player that started the round
     idx_player_active: int             # index of active player in round
     list_player: List[PlayerState]     # list of players
-    list_id_card_draw: List[Card]      # list of cards to draw
-    list_id_card_discard: List[Card]   # list of cards discarded
+    list_card_draw: List[Card]      # list of cards to draw
+    list_card_discard: List[Card]   # list of cards discarded
     card_active: Optional[Card]        # active card (for 7 and JKR with sequence of actions)
 
-
 class Dog(Game):
-
     def __init__(self) -> None:
-        """ Game initialization (set_state call not necessary, we expect 4 players) """
-        pass
+        """Game initialization"""
+        self.state = GameState(
+            cnt_player=4,
+            phase=GamePhase.RUNNING,
+            cnt_round=1,
+            bool_game_finished=False,
+            bool_card_exchanged=False,
+            idx_player_started=0,
+            idx_player_active=0,
+            list_player=[],
+            list_card_draw=[],
+            list_card_discard=[],
+            card_active=None
+        )
+        self.reset()
 
-    def set_state(self, state: GameState) -> None:
-        """ Set the game to a given state """
-        pass
+    def reset(self) -> None:
+        """Reset the game to initial state"""
+        # Create a fresh deck and shuffle it
+        all_cards = GameState.LIST_CARD.copy()
+        random.shuffle(all_cards)
+        
+        # Initialize players
+        self.state.list_player = []
+        for i in range(4):
+            # Deal 6 cards to each player
+            player_cards = all_cards[i * 6:(i + 1) * 6]
+            
+            # Create 4 marbles for each player
+            player_marbles = [
+                Marble(pos=str(i), is_save=False) 
+                for i in range(4)
+            ]
+            
+            # Create player state
+            player = PlayerState(
+                name=f"Player {i}",
+                list_card=player_cards,
+                list_marble=player_marbles
+            )
+            self.state.list_player.append(player)
+        
+        # Remaining cards go to draw pile
+        self.state.list_card_draw = all_cards[24:]
+        self.state.list_card_discard = []
 
     def get_state(self) -> GameState:
-        """ Get the complete, unmasked game state """
-        pass
+        """Get the complete, unmasked game state"""
+        return self.state
+
+    def set_state(self, state: GameState) -> None:
+        """Set the game to a given state"""
+        self.state = state
 
     def print_state(self) -> None:
         """ Print the current game state """
