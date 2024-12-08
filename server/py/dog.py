@@ -177,8 +177,26 @@ class Dog(Game):
         return actions
 
     def apply_action(self, action: Action) -> None:
-        """ Apply the given action to the game """
-        pass
+        """Apply the given action to the game state"""
+        if action is None:
+            return
+
+        # Get active player
+        player = self._state.list_player[self._state.idx_player_active]
+
+        # Handle moving marble out of kennel
+        if action.pos_from == 64 and action.pos_to == 0:  # Moving from kennel to start
+            # Find marble in kennel
+            for marble in player.list_marble:
+                if int(marble.pos) >= 64:  # Convert string pos to int for comparison
+                    # Move marble to start position
+                    marble.pos = str(action.pos_to)  # Convert back to string when assigning
+                    # Set as save since it just moved to start
+                    marble.is_save = True
+                    break
+
+            # Remove used card from player's hand
+            player.list_card = [c for c in player.list_card if c != action.card]
 
     def get_player_view(self, idx_player: int) -> GameState:
         """ Get the masked state for the active player (e.g. the oppontent's cards are face down)"""
