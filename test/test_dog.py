@@ -25,6 +25,14 @@ class TestDogBenchmark:
         self.game_server._state.idx_player_active = 1  # Different from started player
         self.game_server._state.list_card_draw = self.game_server._state.list_card_draw[:85]
 
+    def get_sorted_list_action(self, list_action):
+        """Helper method to sort list of actions for comparison"""
+        return sorted([str(action) for action in list_action])
+
+    def get_list_action_as_str(self, list_action):
+        """Helper method to convert list of actions to string representation"""
+        return '\n'.join([str(action) for action in sorted([str(action) for action in list_action])])
+
     def test_initial_game_state_values(self):
         """Test 001: Validate values of initial game state (cnt_round=1) [5 points]"""
         # TODO: Must be valid for 2 players too!
@@ -48,7 +56,6 @@ class TestDogBenchmark:
             assert len(player.list_card) == 6, f'{state}Error: len("list_player.list_card") must be 6 initially'
             assert len(player.list_marble) == 4, f'{state}Error: len("list_player.list_marble") must be 4 initially'
 
-
     def test_later_game_state_values(self):
         """Test 002: Validate values of later game state (cnt_round=2) [5 points]"""
         # TODO: Must be valid for 2 players too!
@@ -65,8 +72,97 @@ class TestDogBenchmark:
 
         for player in state.list_player:
             assert len(player.list_marble) == 4, f'{state}Error: len("list_player.list_marble") must be 4 initially'
-            #assert player.idx_player >= 0, f'Error: "list_player.idx_player" must >= 0'
-            #assert player.idx_player < 4, f'Error: "list_player.idx_player" must < 4'
+
+    def test_get_list_action_without_start_cards(self):
+        """Test 003: Test get_list_action without start-cards [1 point]"""
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♣', rank='3'), Card(suit='♦', rank='9'), Card(suit='♣', rank='10'), 
+                           Card(suit='♥', rank='Q'), Card(suit='♠', rank='7'), Card(suit='♣', rank='J')]
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action_found = self.game_server.get_list_action()
+        list_action_expected = []
+
+        hint = str_state
+        hint += 'Error: "get_list_action" result is wrong'
+        hint += f'\nExpected:'
+        hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+        hint += f'\nFound:'
+        hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+        assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+    
+    def test_get_list_action_with_one_start_card(self):
+        """Test 004: Test get_list_action with one start-card [1 point]"""
+
+        list_card = [Card(suit='♦', rank='A'), Card(suit='♥', rank='K'), Card(suit='', rank='JKR')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player_active]
+            player.list_card = [Card(suit='♣', rank='10'), Card(suit='♥', rank='Q'), Card(suit='♠', rank='7'), Card(suit='♣', rank='J'), card]
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            action = Action(card=card, pos_from=64, pos_to=0)
+
+            hint = str_state
+            hint += f'Error: "get_list_action" must return an action to get out of kennel for {card}'
+            hint += f'\nFound:'
+            hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+            assert action in list_action_found, hint
+
+    def test_get_list_action_with_three_start_cards(self):
+        """Test 005: Test get_list_action with three start-cards [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♣', rank='10'), Card(suit='♦', rank='A'), Card(suit='♠', rank='2'), Card(suit='♥', rank='K'), Card(suit='♠', rank='7'), Card(suit='♥', rank='A')]
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action = self.game_server.get_list_action()
+        list_action_found = self.get_sorted_list_action(list_action)
+        list_action_expected = self.get_sorted_list_action([
+            Action(card=Card(suit='♦', rank='A'), pos_from=64, pos_to=0),
+            Action(card=Card(suit='♥', rank='K'), pos_from=64, pos_to=0),
+            Action(card=Card(suit='♥', rank='A'), pos_from=64, pos_to=0)
+        ])
+
+        hint = str_state
+        hint += f'Error 1: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+        assert len(list_action_found) == len(list_action_expected), hint
+
+        hint = str_state
+        hint += 'Error 2: "get_list_action" list is wrong'
+        hint += f'\nExpected:'
+        hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+        hint += f'\nFound:'
+        hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+        assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
 
 if __name__ == '__main__':
     pytest.main(['-v', __file__])

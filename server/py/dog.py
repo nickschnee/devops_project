@@ -26,7 +26,7 @@ class Action(BaseModel):
     card: Card                 # card to play
     pos_from: Optional[int]    # position to move the marble from
     pos_to: Optional[int]      # position to move the marble to
-    card_swap: Optional[Card]  # optional card to swap ()
+    card_swap: Optional[Card] = None  # optional card to swap ()
 
 
 class GamePhase(str, Enum):
@@ -155,7 +155,26 @@ class Dog(Game):
 
     def get_list_action(self) -> List[Action]:
         """ Get a list of possible actions for the active player """
-        pass
+        if self._state.cnt_round == 0 and not self._state.bool_card_exchanged:
+            return []
+
+        actions = []
+        player = self._state.list_player[self._state.idx_player_active]
+        
+        # Check for start cards that can move marbles out of kennel
+        for card in player.list_card:
+            # Start cards are: Ace, King, and Joker
+            if card.rank in ['A', 'K', 'JKR']:
+                # Create action with all required fields
+                action = Action(
+                    card=card,
+                    pos_from=64,
+                    pos_to=0,
+                    card_swap=None
+                )
+                actions.append(action)
+
+        return actions
 
     def apply_action(self, action: Action) -> None:
         """ Apply the given action to the game """
