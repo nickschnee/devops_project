@@ -769,6 +769,472 @@ class TestDogBenchmark:
         hint = str_state_1 + str_action + str_state_2
         hint += 'Error: Only one JOKER card should be replaced.'
         assert cnt_jkr == 1, hint
+        
+    def test_move_with_SEVEN_multiple_steps_1(self):
+        """Test 029: Test move with card SEVEN from start [5 point]"""
+
+        list_steps_split = [
+            [1, 1, 1, 1, 1, 1, 1],
+            [2, 1, 1, 1, 1, 1],
+            [2, 2, 1, 1, 1],
+            [2, 2, 2, 1],
+            [3, 1, 1, 1, 1],
+            [3, 2, 1, 1],
+            [3, 2, 2],
+            [3, 3, 1],
+            [4, 1, 1, 1],
+            [4, 2, 1],
+            [4, 3],
+            [5, 2],
+            [6, 1],
+        ]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            for steps_split in list_steps_split:
+
+                self.game_server.reset()
+                state = self.game_server.get_state()
+
+                pos_from = 0
+                card_seven_steps_remaining = 7
+                card_active = card
+                idx_player_active = 0
+                state.cnt_round = 0
+                state.idx_player_started = idx_player_active
+                state.idx_player_active = idx_player_active
+                state.bool_card_exchanged = True
+                player = state.list_player[idx_player_active]
+                player.list_card = [card, Card(suit='♠', rank='K')]
+                marble = player.list_marble[0]
+                marble.pos = pos_from
+                marble.is_save = True
+                self.game_server.set_state(state)
+                str_states = str(state)
+
+                for steps in steps_split:
+
+                    if card_seven_steps_remaining < 7:
+                        list_action_found = self.game_server.get_list_action()
+                        is_okay = True
+                        for action in list_action_found:
+                            is_okay = is_okay and action.card in list_card
+                        hint = str_states
+                        hint += f'Error 1: While playing card SEVEN only actions with card SEVEN are allowed.'
+                        assert is_okay, hint
+
+                    pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                    action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                    self.game_server.apply_action(action)
+                    str_states += f'Action: {action}\n'
+
+                    card_seven_steps_remaining -= steps
+
+                    state = self.game_server.get_state()
+                    str_states += str(state)
+
+                    found = False
+                    player = state.list_player[idx_player_active]
+                    found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                    hint = str_states
+                    hint += f'Error 2: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+                    assert found, hint
+
+                    if card_seven_steps_remaining == 0:
+                        idx_player_active += 1
+                        card_active = None
+
+                    hint = str_states
+                    hint += f'Error 3: "idx_player_active" should be {idx_player_active} not {state.idx_player_active}'
+                    assert state.idx_player_active == idx_player_active, hint
+
+                    hint = str_states
+                    hint +=f'Error 4: "card_active" must be set to "{card}" {"after" if card_active is None else "while"} steps of card SEVEN are moved.'
+                    assert state.card_active == card_active, hint
+
+                    pos_from += steps
+
+    def test_move_with_SEVEN_multiple_steps_2(self):
+        """Test 030: Test move with card SEVEN with multiple marbles [5 point]"""
+
+        list_steps_split = [
+            [1, 1, 1, 1, 1, 1, 1],
+            [2, 1, 1, 1, 1, 1],
+            [2, 2, 1, 1, 1],
+            [2, 2, 2, 1],
+            [3, 1, 1, 1, 1],
+            [3, 2, 1, 1],
+            [3, 2, 2],
+            [3, 3, 1],
+            [4, 1, 1, 1],
+            [4, 2, 1],
+            [4, 3],
+            [5, 2],
+            [6, 1],
+        ]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            for steps_split in list_steps_split:
+
+                self.game_server.reset()
+                state = self.game_server.get_state()
+
+                pos_from_1 = 0
+                pos_from_2 = 12
+                card_seven_steps_remaining = 7
+                idx_player_active = 0
+                state.cnt_round = 0
+                state.idx_player_started = idx_player_active
+                state.idx_player_active = idx_player_active
+                state.bool_card_exchanged = True
+                player = state.list_player[idx_player_active]
+                player.list_card = [card]
+                marble = player.list_marble[0]
+                marble.pos = pos_from_1
+                marble.is_save = True
+                marble = player.list_marble[1]
+                marble.pos = pos_from_2
+                marble.is_save = False
+                self.game_server.set_state(state)
+                str_states = str(state)
+
+                for i, steps in enumerate(steps_split):
+
+                    pos_from = pos_from_1 if i % 2 == 0 else pos_from_2
+                    pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                    action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                    self.game_server.apply_action(action)
+                    str_states += f'Action: {action}\n'
+
+                    card_seven_steps_remaining -= steps
+
+                    state = self.game_server.get_state()
+                    str_states += str(state)
+
+                    player = state.list_player[idx_player_active]
+                    found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                    hint = str_states
+                    hint += f'Error 1: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+                    assert found, hint
+
+                    if card_seven_steps_remaining == 0:
+                        card_seven_steps_remaining = 7
+                        idx_player_active += 1
+
+                    hint = str_states
+                    hint += f'Error 2: "idx_player_active" should be {idx_player_active} not {state.idx_player_active}'
+                    assert state.idx_player_active == idx_player_active, hint
+
+                    if i % 2 == 0:
+                        pos_from_1 += steps
+                    else:
+                        pos_from_2 += steps
+
+    def test_move_with_SEVEN_multiple_steps_3(self):
+        """Test 031: Test move with card SEVEN and kick out oponents [1 point]"""
+
+        list_steps = [1, 2, 3, 4, 5, 6, 7]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            for steps in list_steps:
+
+                self.game_server.reset()
+                state = self.game_server.get_state()
+
+                pos_from = 0
+                pos_oponent = pos_from + steps - 1 if steps > 1 else pos_from + 1
+                idx_player_active = 0
+                state.cnt_round = 0
+                state.idx_player_started = idx_player_active
+                state.idx_player_active = idx_player_active
+                state.bool_card_exchanged = True
+                player = state.list_player[idx_player_active]
+                player.list_card = [card]
+                marble = player.list_marble[0]
+                marble.pos = pos_from
+                marble.is_save = True
+                player = state.list_player[idx_player_active + 1]
+                player.list_card = [Card(suit='♥', rank='K')]
+                marble = player.list_marble[0]
+                marble.pos = pos_oponent
+                marble.is_save = False
+                self.game_server.set_state(state)
+                str_states = str(state)
+
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                self.game_server.apply_action(action)
+                str_states += f'Action: {action}\n'
+
+                state = self.game_server.get_state()
+                str_states += str(state)
+
+                player = state.list_player[idx_player_active]
+                found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                hint = str_states
+                hint += f'Error 1: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+                assert found, hint
+
+                pos_from = pos_oponent
+                pos_to = 72
+                player = state.list_player[idx_player_active + 1]
+                found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                hint = str_states
+                hint += f'Error 2: Player 2\'s marble must be put back to kennel from pos={pos_from} to pos={pos_to}.'
+                hint += f'\nHint: Player 2\'s marble was overtaken by a SEVEN move ({steps} steps).'
+                assert found, hint
+
+    def test_move_with_SEVEN_multiple_steps_4(self):
+        """Test 032: Test move with card SEVEN and kick out own marbles [1 point]"""
+
+        list_steps = [1, 2, 3, 4, 5, 6, 7]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            for steps in list_steps:
+
+                self.game_server.reset()
+                state = self.game_server.get_state()
+
+                pos_from = 0
+                pos_own = pos_from + steps - 1 if steps > 1 else pos_from + 1
+                idx_player_active = 0
+                state.cnt_round = 0
+                state.idx_player_started = idx_player_active
+                state.idx_player_active = idx_player_active
+                state.bool_card_exchanged = True
+                player = state.list_player[idx_player_active]
+                player.list_card = [card]
+                marble = player.list_marble[0]
+                marble.pos = pos_from
+                marble.is_save = True
+                marble = player.list_marble[1]
+                marble.pos = pos_own
+                marble.is_save = False
+                self.game_server.set_state(state)
+                str_states = str(state)
+
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                self.game_server.apply_action(action)
+                str_states += f'Action: {action}\n'
+
+                state = self.game_server.get_state()
+                str_states += str(state)
+
+                player = state.list_player[idx_player_active]
+                found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                hint = str_states
+                hint += f'Error 1: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+                assert found, hint
+
+                player = state.list_player[idx_player_active]
+                cnt_in_kennel = 0
+                for marble in player.list_marble:
+                    if marble.pos >= 64:
+                        cnt_in_kennel += 1
+                found = cnt_in_kennel == 3
+                hint = str_states
+                hint += f'Error 2: Player 1\'s second marble must be put back to kennel.'
+                hint += f'\nHint: Player 1\'s second marble was overtaken by a SEVEN move ({steps} steps).'
+                assert found, hint
+
+    def test_move_with_SEVEN_multiple_steps_5(self):
+        """Test 033: Test move with card SEVEN and can not play all steps [10 point]"""
+
+        list_steps = [1, 2, 3]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            pos_blocked = 16
+            pos_from = pos_blocked - sum(list_steps[:-1]) - 1
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player_active]
+            player.list_card = [card]
+            marble = player.list_marble[0]
+            marble.pos = pos_from
+            marble.is_save = False
+            player = state.list_player[idx_player_active + 1]
+            marble = player.list_marble[0]
+            marble.pos = pos_blocked
+            marble.is_save = True
+            marble = player.list_marble[1]
+            marble.pos = pos_blocked - 1
+            marble.is_save = False
+            self.game_server.set_state(state)
+            str_states = str(state)
+
+            for i, steps in enumerate(list_steps):
+
+                if i < len(list_steps) - 1:  # before last step
+                    pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                    action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                    self.game_server.apply_action(action)
+                    str_states += f'Action: {action}\n'
+                else:  # last step
+                    list_action_found = self.game_server.get_list_action()
+
+                    hint = str_states
+                    hint += 'Error 1: "get_list_action" must be empty.'
+                    hint += f'\nHint: Player 1 can not play all steps with card {card}.'
+                    assert len(list_action_found) == 0, hint
+
+                    self.game_server.apply_action(None)
+                    str_states += f'Action: None\n'
+
+                    state = self.game_server.get_state()
+                    str_states += str(state)
+
+                    # assert game state is reset
+                    hint = str_states
+                    hint += 'Error 2: Game State was not reset.'
+                    hint += f'\nHint: "card_active" must be None.'
+                    assert state.card_active is None, hint
+
+                    pos_blocked = 16
+                    pos_from = pos_blocked - sum(list_steps[:-1]) - 1
+
+                    player = state.list_player[idx_player_active]
+                    idx_marble = self.get_idx_marble(player=player, pos=pos_from)
+                    hint = str_states
+                    hint += 'Error 3: Game State was not reset.'
+                    hint += f'\nHint: Player 1 must have a marble on pos {pos_from}.'
+                    assert idx_marble != -1, hint
+
+                    player = state.list_player[idx_player_active + 1]
+                    idx_marble = self.get_idx_marble(player=player, pos=pos_blocked)
+                    hint = str_states
+                    hint += 'Error 4: Game State was not reset.'
+                    hint += f'\nHint: Player 2 must have a marble on pos {pos_blocked}.'
+                    assert idx_marble != -1, hint
+
+                    idx_marble = self.get_idx_marble(player=player, pos=pos_blocked - 1)
+                    hint = str_states
+                    hint += 'Error 5: Game State was not reset.'
+                    hint += f'\nHint: Player 2 must have a marble on pos {pos_blocked - 1}.'
+                    assert idx_marble != -1, hint
+
+                pos_from = pos_to
+
+    def test_move_with_SEVEN_multiple_steps_6(self):
+        """Test 034: Test move with card SEVEN into finish [5 point]"""
+
+        steps_split = [5, 2]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            pos_from = 13
+            card_seven_steps_remaining = 7
+            card_active = card
+            idx_player_active = 1
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player_active]
+            player.list_card = [card]
+            marble = player.list_marble[0]
+            marble.pos = pos_from
+            marble.is_save = False
+            self.game_server.set_state(state)
+            str_states = str(state)
+
+            for steps in steps_split:
+
+                pos_to = 77 if steps == 5 else 79
+                action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                self.game_server.apply_action(action)
+                str_states += f'Action: {action}\n'
+
+                card_seven_steps_remaining -= steps
+
+                state = self.game_server.get_state()
+                str_states += str(state)
+
+                found = False
+                player = state.list_player[idx_player_active]
+                found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                hint = str_states
+                hint += f'Error 1: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+                assert found, hint
+
+                if card_seven_steps_remaining == 0:
+                    idx_player_active += 1
+                    card_active = None
+
+                hint = str_states
+                hint += f'Error 2: "idx_player_active" should be {idx_player_active} not {state.idx_player_active}'
+                assert state.idx_player_active == idx_player_active, hint
+
+                hint = str_states
+                hint += f'Error 3: "card_active" must be set to "{card}" {"after" if card_active is None else "while"} steps of card SEVEN are moved.'
+                assert state.card_active == card_active, hint
+
+                pos_from = pos_to
+
+    def test_move_with_SEVEN_multiple_steps_7(self):
+        """Test 035: Test move with card SEVEN into finish [5 point]"""
+
+        steps_split = [5, 2]
+        list_card = [Card(suit='♣', rank='7'), Card(suit='♦', rank='7'), Card(suit='♥', rank='7'), Card(suit='♠', rank='7')]
+
+        for card in list_card:
+
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            pos_from = 12
+            card_seven_steps_remaining = 7
+            idx_player_active = 1
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player_active]
+            player.list_card = [card]
+            marble = player.list_marble[0]
+            marble.pos = pos_from
+            marble.is_save = False
+            self.game_server.set_state(state)
+            str_states = str(state)
+
+            for steps in steps_split:
+
+                if steps == 2:
+                    list_action_found = self.game_server.get_list_action()
+                    hint = str_states
+                    hint += f'Error: Too many steps possible in finish.'
+                    assert len(list_action_found) == 2, hint
+
+                pos_to = 76 if steps == 5 else 78
+                action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+                self.game_server.apply_action(action)
+                str_states += f'Action: {action}\n'
+
+                card_seven_steps_remaining -= steps
+
+                state = self.game_server.get_state()
+                str_states += str(state)
+
+                pos_from = pos_to
 
         
     # helper functions our code needs to run
