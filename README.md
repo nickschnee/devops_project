@@ -73,4 +73,6 @@ python benchmark/benchmark_dog.py python dog.Dog
 python test/test_dog.py
 ```
 
-The Benchmark File `benchmark_dog.py` contains many helper functions which need to be copied to the test file `test_dog.py` if you want to run the test there.
+The Benchmark File `benchmark_dog.py` contains many helper functions which need to be copied to the test file `test_dog.py` to pass some of the tests.
+
+Helper functions are marked with the comment `# helper functions our code needs to run` at the end of the file.
