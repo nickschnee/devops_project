@@ -276,15 +276,60 @@ class TestDogBenchmark:
         hint = str_state_1 + str_action + str_state_2
         hint += 'Error: Player 2\'s marble must be back in kennel (pos=72)'
         assert found, hint    
+
+    def test_move_with_ACE_from_start(self):
+        """Test 009: Test move with card ACE from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♦', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♥', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♠', rank='A'), 'list_steps': [1, 11]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)        
         
-        
-    # this is a helper function the test needs to run
+    # helper functions our code needs to run
         
     def get_idx_marble(self, player: PlayerState, pos: int) -> int:
         for idx_marble, marble in enumerate(player.list_marble):
             if marble.pos == pos:
                 return idx_marble
-        return -1    
+        return -1  
     
+    def move_test(self, pos_from: int, list_test: list[dict]) -> None:
+        for test in list_test:
+            card = test['card']
+            for steps in test['list_steps']:
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                self.move_marble(card=card, pos_from=pos_from, pos_to=pos_to)  
+
+    def move_marble(self, card: str, pos_from: int, pos_to: int) -> None:
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = pos_from
+        player.list_marble[0].is_save = True
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+        self.game_server.apply_action(action)
+        str_states += f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        player = state.list_player[idx_player_active]
+        found = self.get_idx_marble(player=player, pos=pos_to) != -1
+        hint = str_states
+        hint += f'Error: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+        assert found, hint
+        
 if __name__ == '__main__':
     pytest.main(['-v', __file__])

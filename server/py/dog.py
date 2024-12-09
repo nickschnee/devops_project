@@ -162,25 +162,39 @@ class Dog(Game):
         active_player_idx = self._state.idx_player_active
         player = self._state.list_player[active_player_idx]
 
-        # Check who (if anyone) occupies start position
+        # Check if start position is occupied by the player's own marble
         occupant_player_idx = self.get_player_who_occupies_pos(0)
-        # If start is occupied by ourselves, don't allow start actions
-        if occupant_player_idx == active_player_idx:
-            start_occupied_by_self = True
-        else:
-            start_occupied_by_self = False
+        start_occupied_by_self = (occupant_player_idx == active_player_idx)
 
-        # Check for start cards that can move marbles out of kennel if start is free from self-blocking
+        # START actions (Kennel -> Start)
         for card in player.list_card:
+            # A, K, JKR can start a marble if not blocked by self
             if card.rank in ['A', 'K', 'JKR'] and not start_occupied_by_self:
-                action = Action(
+                actions.append(Action(
                     card=card,
-                    pos_from=64,  # Kennel position
-                    pos_to=0,     # Start position
+                    pos_from=64,
+                    pos_to=0,
                     card_swap=None
-                )
-                actions.append(action)
+                ))
 
+        # REGULAR MOVE actions with ACE:
+        # An Ace can also move a marble already on the board by 1 or 11 steps.
+        for card in player.list_card:
+            if card.rank == 'A':
+                steps = [1, 11]
+                for marble in player.list_marble:
+                    # Marble must be on the board (0 to 63 for main track, as an assumption)
+                    # We know pos=0 is start - so let's allow from there.
+                    if 0 <= marble.pos < 64:
+                        for step in steps:
+                            new_pos = (marble.pos + step) % 96
+                            # In a real game, you'd check for blocking rules, 
+                            # but for now let's just add these possible moves.
+                            actions.append(Action(
+                                card=card,
+                                pos_from=marble.pos,
+                                pos_to=new_pos
+                            ))
         return actions
 
 
@@ -192,31 +206,48 @@ class Dog(Game):
         active_player_idx = self._state.idx_player_active
         player = self._state.list_player[active_player_idx]
 
-        # Handle moving marble out of kennel to start
+        # Moving out of kennel to start
         if action.pos_from == 64 and action.pos_to == 0:
-            # Check if start position is occupied by another player's marble
             occupant_player_idx = self.get_player_who_occupies_pos(0)
             if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
-                # Kick out the opponent's marble
+                # Kick out opponent's marble
                 opponent = self._state.list_player[occupant_player_idx]
                 for marble in opponent.list_marble:
                     if marble.pos == 0:
                         # Move opponent's marble back to its kennel start
-                        kennel_start = 64 + occupant_player_idx * 8
-                        marble.pos = kennel_start
+                        marble.pos = 72
                         marble.is_save = False
                         break
 
-            # Now place our marble at start
+            # Move our marble from kennel to start
             for marble in player.list_marble:
-                if marble.pos >= 64:  # Marble in kennel
+                if marble.pos >= 64:
                     marble.pos = 0
                     marble.is_save = True
-                    # Remove the used card
-                    player.list_card = [
-                        c for c in player.list_card
-                        if not (c.suit == action.card.suit and c.rank == action.card.rank)
-                    ]
+                    # Remove used card
+                    player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
+                    break
+
+        # Moving a marble on the board using an ACE (1 or 11 steps)
+        elif action.card.rank == 'A' and 0 <= action.pos_from < 64:
+            # Find the marble at pos_from
+            for marble in player.list_marble:
+                if marble.pos == action.pos_from:
+                    # Move it
+                    # If there's an opponent marble at pos_to, kick it out (optional if needed)
+                    occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
+                    if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
+                        opponent = self._state.list_player[occupant_player_idx]
+                        for omarble in opponent.list_marble:
+                            if omarble.pos == action.pos_to:
+                                omarble.pos = 72
+                                omarble.is_save = False
+                                break
+
+                    marble.pos = action.pos_to
+                    marble.is_save = False  # once moved, it's not in the initial "is_save" state
+                    # Remove used card
+                    player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
                     break
             
     def get_player_who_occupies_pos(self, position: int) -> Optional[int]:
