@@ -584,6 +584,191 @@ class TestDogBenchmark:
             hint += 'Error: Player 1 should be able to use JAKE without any oponents and no other actions'
             assert action in list_action_found, hint
 
+    def test_chose_card_with_JOKER_1(self):
+        """Test 025: Test JOKER card at beginning [5 point]"""
+
+        list_card = [Card(suit='', rank='JKR')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player_active]
+            player.list_card = [Card(suit='', rank='JKR')]
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            list_action_expected = [
+                Action(card=Card(suit='', rank='JKR'), pos_from=64, pos_to=0),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='A')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='K')),
+            ]
+
+            hint = str_state
+            hint += f'Error 1: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+            assert len(list_action_found) == len(list_action_expected), hint
+
+            hint = str_state
+            hint += 'Error 2: "get_list_action" result is wrong'
+            hint += f'\nExpected:'
+            hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+            hint += f'\nFound:'
+            hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+            assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
+    def test_chose_card_with_JOKER_2(self):
+        """Test 026: Test JOKER card in later game [5 point]"""
+
+        list_card = [Card(suit='', rank='JKR')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            for idx_player, player in enumerate(state.list_player):
+                if idx_player == idx_player_active:
+                    player.list_card = [card]
+                marble = player.list_marble[0]
+                marble.pos = idx_player * 16
+                marble.is_save = True  # save oponents cant be moved!
+                marble = player.list_marble[1]
+                marble.pos = idx_player * 16 + 1
+                marble.is_save = False
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            list_action_expected = [
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='2')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='3')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='4')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='5')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='6')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='7')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='8')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='9')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='10')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='A')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='J')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='K')),
+                Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=Card(suit='♥', rank='Q')),
+            ]
+            hint = str_state
+            hint += f'Error 1: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+            assert len(list_action_found) == len(list_action_expected), hint
+
+            hint = str_state
+            hint += 'Error 2: "get_list_action" result is wrong'
+            hint += f'\nExpected:'
+            hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+            hint += f'\nFound:'
+            hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+            assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
+        list_card = [Card(suit='♦', rank='A'), Card(suit='♥', rank='K'), Card(suit='', rank='JKR')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player_active]
+            player.list_card = [Card(suit='♣', rank='10'), Card(suit='♥', rank='Q'), Card(suit='♠', rank='7'), Card(suit='♣', rank='J'), card]
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            action = Action(card=card, pos_from=64, pos_to=0)
+
+            hint = str_state
+            hint += f'Error 3: "get_list_action" must return at least one action to get out of kennel for {card}'
+            assert action in list_action_found, hint
+
+    def test_chose_card_with_JOKER_3(self):
+        """Test 027: Test JOKER card with swap action [3 point]"""
+
+        card_swap = Card(suit='♥', rank='A')
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='', rank='JKR'), Card(suit='♠', rank='K')]
+        self.game_server.set_state(state)
+        str_state_1 = str(state)
+
+        action = Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=card_swap)
+        self.game_server.apply_action(action)
+        str_action = f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_state_2 = str(state)
+
+        hint = str_state_1 + str_action + str_state_2
+        hint += f'Error 1: "card_active" must be set to "{card_swap}" after JKR was played for other card.'
+        assert state.card_active == card_swap, hint
+
+        hint = str_state_1 + str_action + str_state_2
+        hint += f'Error 2: "idx_player_active" must be same after JKR was played for other card.'
+        assert state.idx_player_active == idx_player_active, hint
+
+        list_action_found = self.game_server.get_list_action()
+        action = Action(card=Card(suit='♠', rank='K'), pos_from=64, pos_to=0)
+
+        hint = str_state_1 + str_action + str_state_2
+        hint += f'Error 3: "get_list_action" must return only options for replaced card "card_active" ({card_swap}).'
+        assert action not in list_action_found, hint
+
+    def test_chose_card_with_JOKER_4(self):
+        """Test 028: Test with two JOKER cards [1 point]"""
+
+        card_swap = Card(suit='♥', rank='A')
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='', rank='JKR'), Card(suit='', rank='JKR')]
+        self.game_server.set_state(state)
+        str_state_1 = str(state)
+
+        action = Action(card=Card(suit='', rank='JKR'), pos_from=-1, pos_to=-1, card_swap=card_swap)
+        self.game_server.apply_action(action)
+        str_action = f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_state_2 = str(state)
+
+        player = state.list_player[idx_player_active]
+        cnt_jkr = len([card for card in player.list_card if card == Card(suit='', rank='JKR')])
+        hint = str_state_1 + str_action + str_state_2
+        hint += 'Error: Only one JOKER card should be replaced.'
+        assert cnt_jkr == 1, hint
 
         
     # helper functions our code needs to run
