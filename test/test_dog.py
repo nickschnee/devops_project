@@ -342,6 +342,73 @@ class TestDogBenchmark:
             {'card': Card(suit='♥', rank='6'), 'list_steps': [6]},
             {'card': Card(suit='♠', rank='6'), 'list_steps': [6]},
         ]
+        self.move_test(pos_from=0, list_test=list_test)
+        
+        
+    def test_move_with_SEVEN_from_start(self):
+        """Test 015: Test move with card SEVEN from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♦', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♥', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♠', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_EIGHT_from_start(self):
+        """Test 016: Test move with card EIGHT from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♦', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♥', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♠', rank='8'), 'list_steps': [8]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_NINE_from_start(self):
+        """Test 017: Test move with card NINE from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♦', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♥', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♠', rank='9'), 'list_steps': [9]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_TEN_from_start(self):
+        """Test 018: Test move with card TEN from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♦', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♥', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♠', rank='10'), 'list_steps': [10]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_QUEEN_from_start(self):
+        """Test 019: Test move with card QUEEN from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♦', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♥', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♠', rank='Q'), 'list_steps': [12]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_KING_from_start(self):
+        """Test 020: Test move with card KING from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♦', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♥', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♠', rank='K'), 'list_steps': [13]},
+        ]
         self.move_test(pos_from=0, list_test=list_test)        
         
     # helper functions our code needs to run
@@ -386,6 +453,9 @@ class TestDogBenchmark:
         hint = str_states
         hint += f'Error: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
         assert found, hint
+        
+    # end of helper functions
+    # add new tests above helper functions block
         
 if __name__ == '__main__':
     pytest.main(['-v', __file__])

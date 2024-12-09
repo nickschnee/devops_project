@@ -157,6 +157,12 @@ class Dog(Game):
             '4': [4, -4],
             '5': [5],
             '6': [6],
+            '7': [1, 2, 3, 4, 5, 6, 7],
+            '8': [8],
+            '9': [9],
+            '10': [10],
+            'Q': [12],
+            'K': [13],  # K can also start, but we handle start separately
         }
 
         # Check if start is blocked by self
