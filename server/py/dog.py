@@ -159,15 +159,20 @@ class Dog(Game):
             return []
 
         actions = []
-        player = self._state.list_player[self._state.idx_player_active]
+        active_player_idx = self._state.idx_player_active
+        player = self._state.list_player[active_player_idx]
 
-        # Check if start position is already occupied by the player's own marble
-        start_occupied = any(marble.pos == 0 for marble in player.list_marble)
+        # Check who (if anyone) occupies start position
+        occupant_player_idx = self.get_player_who_occupies_pos(0)
+        # If start is occupied by ourselves, don't allow start actions
+        if occupant_player_idx == active_player_idx:
+            start_occupied_by_self = True
+        else:
+            start_occupied_by_self = False
 
-        # Check for start cards that can move marbles out of kennel only if start is free
+        # Check for start cards that can move marbles out of kennel if start is free from self-blocking
         for card in player.list_card:
-            # Start cards are: Ace, King, and Joker
-            if card.rank in ['A', 'K', 'JKR'] and not start_occupied:
+            if card.rank in ['A', 'K', 'JKR'] and not start_occupied_by_self:
                 action = Action(
                     card=card,
                     pos_from=64,  # Kennel position
@@ -184,24 +189,43 @@ class Dog(Game):
         if action is None:
             return
 
-        # Get active player
-        player = self._state.list_player[self._state.idx_player_active]
+        active_player_idx = self._state.idx_player_active
+        player = self._state.list_player[active_player_idx]
 
-        # Handle moving marble out of kennel
-        if action.pos_from == 64 and action.pos_to == 0:  # Moving from kennel to start
-            # Find first marble in kennel (positions 64-67)
+        # Handle moving marble out of kennel to start
+        if action.pos_from == 64 and action.pos_to == 0:
+            # Check if start position is occupied by another player's marble
+            occupant_player_idx = self.get_player_who_occupies_pos(0)
+            if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
+                # Kick out the opponent's marble
+                opponent = self._state.list_player[occupant_player_idx]
+                for marble in opponent.list_marble:
+                    if marble.pos == 0:
+                        # Move opponent's marble back to its kennel start
+                        kennel_start = 64 + occupant_player_idx * 8
+                        marble.pos = kennel_start
+                        marble.is_save = False
+                        break
+
+            # Now place our marble at start
             for marble in player.list_marble:
-                if int(marble.pos) >= 64:  # Convert string pos to int for comparison
-                    # Move marble to start position
-                    marble.pos = action.pos_to  # Use action.pos_to instead of hardcoding
+                if marble.pos >= 64:  # Marble in kennel
+                    marble.pos = 0
                     marble.is_save = True
-                    
-                    # Remove used card from player's hand
+                    # Remove the used card
                     player.list_card = [
-                        card for card in player.list_card 
-                        if not (card.suit == action.card.suit and card.rank == action.card.rank)
+                        c for c in player.list_card
+                        if not (c.suit == action.card.suit and c.rank == action.card.rank)
                     ]
                     break
+            
+    def get_player_who_occupies_pos(self, position: int) -> Optional[int]:
+        """Return the index of the player who occupies the given position, or None if empty."""
+        for i, p in enumerate(self._state.list_player):
+            for m in p.list_marble:
+                if m.pos == position:
+                    return i
+        return None
 
     def get_player_view(self, idx_player: int) -> GameState:
         """ Get the masked state for the active player (e.g. the oppontent's cards are face down)"""

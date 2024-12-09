@@ -203,13 +203,7 @@ class TestDogBenchmark:
         hint += 'Error: Status of marble at pos=0 must be "is_save"=True'
         assert marble_save, hint
         
-    # this is a helper function the test needs to run
-        
-    def get_idx_marble(self, player: PlayerState, pos: int) -> int:
-        for idx_marble, marble in enumerate(player.list_marble):
-            if marble.pos == pos:
-                return idx_marble
-        return -1
+
     
     def test_move_out_of_kennel_2(self):
         """Test 007: Test move out of kennel with self-blocking on start [1 point]"""
@@ -237,6 +231,60 @@ class TestDogBenchmark:
         hint += f'Error: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
         hint += '\nHint: Player 1\'s marbel on start is blocking.'
         assert len(list_action_found) == len(list_action_expected), hint
+        
+    def test_move_out_of_kennel_3(self):
+        """Test 008: Test move out of kennel with oponent on start [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♦', rank='A')]
+        player2 = state.list_player[idx_player_active + 1]
+        player2.list_marble[0].pos = 0
+        player2.list_marble[0].is_save = True
+        self.game_server.set_state(state)
+        str_state_1 = str(state)
+
+        list_action_found = self.game_server.get_list_action()
+        action = Action(card=Card(suit='♦', rank='A'), pos_from=64, pos_to=0)
+        list_action_expected = [action]
+
+        hint = str_state_1
+        hint += f'Error: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+        assert len(list_action_found) == len(list_action_expected), hint
+
+        self.game_server.apply_action(action)
+        str_action = f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_state_2 = str(state)
+
+        player = state.list_player[idx_player_active]
+        found = self.get_idx_marble(player=player, pos=0) != -1
+        hint = str_state_1 + str_action + str_state_2
+        hint += 'Error: Player 1\'s marble must be on start (pos=0)'
+        assert found, hint
+
+        player2 = state.list_player[idx_player_active + 1]
+        found = self.get_idx_marble(player=player2, pos=72) != -1
+        hint = str_state_1 + str_action + str_state_2
+        hint += 'Error: Player 2\'s marble must be back in kennel (pos=72)'
+        assert found, hint    
+        
+        
+    # this is a helper function the test needs to run
+        
+    def get_idx_marble(self, player: PlayerState, pos: int) -> int:
+        for idx_marble, marble in enumerate(player.list_marble):
+            if marble.pos == pos:
+                return idx_marble
+        return -1    
     
 if __name__ == '__main__':
     pytest.main(['-v', __file__])
