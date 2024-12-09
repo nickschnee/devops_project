@@ -286,6 +286,62 @@ class TestDogBenchmark:
             {'card': Card(suit='♥', rank='A'), 'list_steps': [1, 11]},
             {'card': Card(suit='♠', rank='A'), 'list_steps': [1, 11]},
         ]
+        self.move_test(pos_from=0, list_test=list_test)
+        
+        
+    def test_move_with_TWO_from_start(self):
+        """Test 010: Test move with card TWO from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♦', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♥', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♠', rank='2'), 'list_steps': [2]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_THREE_from_start(self):
+        """Test 011: Test move with card THREE from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♦', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♥', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♠', rank='3'), 'list_steps': [3]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_FOUR_from_start(self):
+        """Test 012: Test move with card FOUR from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♦', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♥', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♠', rank='4'), 'list_steps': [4, -4]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_FIVE_from_start(self):
+        """Test 013: Test move with card FIVE from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♦', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♥', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♠', rank='5'), 'list_steps': [5]},
+        ]
+        self.move_test(pos_from=0, list_test=list_test)
+
+    def test_move_with_SIX_from_start(self):
+        """Test 014: Test move with card SIX from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♦', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♥', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♠', rank='6'), 'list_steps': [6]},
+        ]
         self.move_test(pos_from=0, list_test=list_test)        
         
     # helper functions our code needs to run
