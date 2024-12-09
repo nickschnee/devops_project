@@ -410,6 +410,181 @@ class TestDogBenchmark:
             {'card': Card(suit='♠', rank='K'), 'list_steps': [13]},
         ]
         self.move_test(pos_from=0, list_test=list_test)        
+
+    def test_swap_with_JAKE_1(self):
+        """Test 021: Test swap list_actions with card JAKE and oponents [1 point]"""
+
+        list_card = [Card(suit='♣', rank='J'), Card(suit='♦', rank='J'), Card(suit='♥', rank='J'), Card(suit='♠', rank='J')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            for idx_player, player in enumerate(state.list_player):
+                if idx_player == idx_player_active:
+                    player.list_card = [card]
+                marble = player.list_marble[0]
+                marble.pos = idx_player * 16
+                marble.is_save = True  # save oponents cant be moved!
+                marble = player.list_marble[1]
+                marble.pos = idx_player * 16 + 1
+                marble.is_save = False
+
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            list_action_expected = [
+                Action(card=card, pos_from=0, pos_to=17),
+                Action(card=card, pos_from=0, pos_to=33),
+                Action(card=card, pos_from=0, pos_to=49),
+                Action(card=card, pos_from=1, pos_to=17),
+                Action(card=card, pos_from=1, pos_to=33),
+                Action(card=card, pos_from=1, pos_to=49)
+            ]
+
+            hint = str_state
+            hint += f'Error 1: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+            assert len(list_action_found) == len(list_action_expected), hint
+
+            hint = str_state
+            hint += 'Error 2: "get_list_action" result is wrong'
+            hint += f'\nExpected:'
+            hint += f'\n{self.get_list_action_as_str(self.get_sorted_list_action(list_action_expected))}'
+            hint += f'\nFound:'
+            hint += f'\n{self.get_list_action_as_str(self.get_sorted_list_action(list_action_found))}'
+            hint += f'\nHint: Oponents that are save on start can not be swaped'
+            assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
+    def test_swap_with_JAKE_2(self):
+        """Test 022: Test swap list_actions with card JAKE no oponents an no other actions [1 point]"""
+
+        list_card = [Card(suit='♣', rank='J'), Card(suit='♦', rank='J'), Card(suit='♥', rank='J'), Card(suit='♠', rank='J')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            for idx_player, player in enumerate(state.list_player):
+                if idx_player == idx_player_active:
+                    player.list_card = [card]
+                    marble = player.list_marble[0]
+                    marble.pos = idx_player * 16
+                    marble.is_save = True
+                    marble = player.list_marble[1]
+                    marble.pos = idx_player * 16 + 1
+                    marble.is_save = True
+
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            list_action_expected = [
+                Action(card=card, pos_from=0, pos_to=1),
+                Action(card=card, pos_from=1, pos_to=0)
+            ]
+
+            hint = str_state
+            hint +=f'Error 1: "get_list_action" must return {len(list_action_expected)} not {len(list_action_found)} actions'
+            assert len(list_action_found) == len(list_action_expected), hint
+
+            hint = str_state
+            hint += 'Error 2: "get_list_action" result is wrong'
+            hint += f'\nExpected:'
+            hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+            hint += f'\nFound:'
+            hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+            hint += f'\nHint: Oponents that are save on start can not be swaped'
+            assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
+    def test_swap_with_JAKE_3(self):
+        """Test 023: Test swap action with card JAKE and oponents [1 point]"""
+
+        list_card = [Card(suit='♣', rank='J'), Card(suit='♦', rank='J'), Card(suit='♥', rank='J'), Card(suit='♠', rank='J')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            for idx_player, player in enumerate(state.list_player):
+                if idx_player == idx_player_active:
+                    player.list_card = [card]
+                marble = player.list_marble[0]
+                marble.pos = idx_player * 16
+                marble.is_save = True  # save oponents cant be moved!
+                marble = player.list_marble[1]
+                marble.pos = idx_player * 16 + 1
+                marble.is_save = False
+
+            self.game_server.set_state(state)
+            str_state_1 = str(state)
+
+            action = Action(card=card, pos_from=0, pos_to=17)
+            self.game_server.apply_action(action)
+            str_action = f'Action: {action}\n'
+
+            state = self.game_server.get_state()
+            str_state_2 = str(state)
+
+            player1 = state.list_player[idx_player_active]
+            player2 = state.list_player[idx_player_active + 1]
+            is_swapped = self.get_idx_marble(player=player1, pos=17) != -1 and \
+                self.get_idx_marble(player=player2, pos=0) != -1
+
+            hint = str_state_1 + str_action + str_state_2
+            hint += 'Error: Player 1\'s marble on pos=0 should be swapped with Player 2\'s marble on pos=17'
+            assert is_swapped, hint
+
+    def test_swap_with_JAKE_4(self):
+        """Test 024: Test swap action with card JAKE and no oponent and no other actions [1 point]"""
+
+        list_card = [Card(suit='♣', rank='J'), Card(suit='♦', rank='J'), Card(suit='♥', rank='J'), Card(suit='♠', rank='J')]
+
+        for card in list_card:
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            idx_player_active = 0
+            state.cnt_round = 0
+            state.idx_player_started = idx_player_active
+            state.idx_player_active = idx_player_active
+            state.bool_card_exchanged = True
+            for idx_player, player in enumerate(state.list_player):
+                if idx_player == idx_player_active:
+                    player.list_card = [card]
+                    marble = player.list_marble[0]
+                    marble.pos = idx_player * 16
+                    marble.is_save = True
+                    marble = player.list_marble[1]
+                    marble.pos = idx_player * 16 + 1
+                    marble.is_save = True
+
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            action = Action(card=card, pos_from=0, pos_to=1)
+
+            hint = str_state
+            hint += 'Error: Player 1 should be able to use JAKE without any oponents and no other actions'
+            assert action in list_action_found, hint
+
+
         
     # helper functions our code needs to run
         
