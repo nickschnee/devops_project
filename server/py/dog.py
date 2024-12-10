@@ -124,16 +124,37 @@ class Dog(Game):
 
         # If we're in the middle of a 7-card move
         if state.card_active and state.card_active.rank == '7' and state.seven_steps_remaining is not None:
+            valid_moves_exist = False
             for marble in player.list_marble:
                 if marble.pos < 64 or self.is_finish_field(marble.pos):  # On board or in finish area
                     for steps in range(1, state.seven_steps_remaining + 1):
                         pos_to = self.compute_pos_to_for_7(marble.pos, steps)
-                        if pos_to is not None and self.is_move_7_valid(0, marble.pos, pos_to):
-                            actions.append(Action(
-                                card=state.card_active,
-                                pos_from=marble.pos,
-                                pos_to=pos_to
-                            ))
+                        if pos_to is not None:
+                            # Check if path to target position is clear
+                            path_clear = True
+                            curr_pos = marble.pos
+                            while curr_pos < pos_to and path_clear:
+                                curr_pos += 1
+                                if curr_pos < 64:  # Only check blocking on main board
+                                    occupant_idx = self.get_player_who_occupies_pos(curr_pos)
+                                    if occupant_idx is not None:
+                                        path_clear = False
+                                        for p in state.list_player[occupant_idx].list_marble:
+                                            if p.pos == curr_pos and not p.is_save:
+                                                path_clear = True
+                                                break
+
+                            if path_clear:
+                                valid_moves_exist = True
+                                actions.append(Action(
+                                    card=state.card_active,
+                                    pos_from=marble.pos,
+                                    pos_to=pos_to
+                                ))
+
+            # If no valid moves exist, return empty list to trigger rollback
+            if not valid_moves_exist:
+                return []
             return actions
 
         move_options = {
@@ -240,6 +261,22 @@ class Dog(Game):
                                     actions.append(Action(card=card, pos_from=pos_from, pos_to=pos_to))
 
         return actions
+    
+    def is_path_clear(self, pos_from: int, pos_to: int) -> bool:
+        """Check if the path between two positions is clear (no marbles in between)"""
+        if pos_from >= pos_to:
+            return False
+        
+        #check each position in the path
+        for pos in range(pos_from + 1, pos_to):
+            occupant_idx = self.get_player_who_occupies_pos(pos)
+            if occupant_idx is not None:
+                # if position is occupied and marble is saved, path is blocked
+                for player in self._state.list_player:
+                    for marble in player.list_marble:
+                        if marble.pos == pos:
+                            return False
+        return True
 
     def apply_action(self, action: Optional[Action]) -> None:
         if action is None:
@@ -265,19 +302,18 @@ class Dog(Game):
 
         # Handle 7-card moves
         if action.card.rank == '7' and state.seven_steps_remaining is not None:
-            steps = (action.pos_to - action.pos_from) % 96
-            
+            steps = action.pos_to - action.pos_from if action.pos_to >= action.pos_from else 7
+
             # Check and kick out any marbles in the path
             for pos in range(action.pos_from + 1, action.pos_to + 1):
-                pos = pos % 96
+                pos = pos % 64 if pos < 64 else pos  # Handle finish area differently
                 occupant_idx = self.get_player_who_occupies_pos(pos)
                 if occupant_idx is not None:
-                    opp = state.list_player[occupant_idx]
-                    for m in opp.list_marble:
-                        if m.pos == pos:
-                            m.pos = 72
+                    for m in state.list_player[occupant_idx].list_marble:
+                        if m.pos == pos and not m.is_save:
+                            m.pos = 72  # Send back to kennel
                             m.is_save = False
-
+            
             # Move the marble
             for m in player.list_marble:
                 if m.pos == action.pos_from:
@@ -289,6 +325,7 @@ class Dog(Game):
             
             # Check if 7-card sequence is complete
             if state.seven_steps_remaining == 0:
+                # Remove the seven card only after successful completion
                 player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
                 state.seven_steps_remaining = None
                 state.seven_backup_state = None
@@ -362,6 +399,8 @@ class Dog(Game):
                     player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
                     break
 
+    
+
     def get_player_view(self, idx_player: int) -> GameState:
         pass
 
@@ -369,27 +408,34 @@ class Dog(Game):
         return pos >= 72 and pos < 80
 
     def compute_pos_to_for_7(self, pos_from: int, steps: int) -> Optional[int]:
+        """
+        Compute the target position for a 7-card move, considering finish area.
+        Returns None if the move would be invalid.
+        """
         # If starting from normal track
         if pos_from < 64:
-            steps_to_end = 63 - pos_from
-            if steps <= steps_to_end:
+            # Calculate steps to finish
+            steps_to_finish = 63 - pos_from
+            
+            # If we can stay on the normal track
+            if steps <= steps_to_finish:
                 return pos_from + steps
-            else:
-                # Need to enter finish area
-                remaining_steps = steps - steps_to_end - 1  # -1 because first finish field is one step after 63
-                finish_pos = 72 + remaining_steps
-                if finish_pos < 80:  # Valid finish position
-                    return finish_pos
-                return None  # Invalid - would go beyond finish area
+            
+            # If we need to enter finish area
+            remaining_steps = steps - steps_to_finish - 1
+            finish_pos = 72 + remaining_steps
+            if finish_pos < 80:  # Check if within finish area
+                return finish_pos
+            return None
         
         # If already in finish area
         elif self.is_finish_field(pos_from):
             new_pos = pos_from + steps
-            if new_pos < 80:  # Valid finish position
+            if new_pos < 80:  # Check if within finish area
                 return new_pos
-            return None  # Invalid - would go beyond finish area
+            return None
         
-        return None  # Invalid starting position
+        return None
 
     def is_move_7_valid(self, marble_idx: int, pos_from: int, pos_to: int) -> bool:
         if pos_to is None:
