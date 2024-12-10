@@ -319,45 +319,53 @@ class Dog(Game):
         # Handle 7 card moves
         if action.card.rank == '7' and state.seven_steps_remaining is not None:
             # Calculate steps taken
-            steps = action.pos_to - action.pos_from
             if action.pos_from < 64 and self.is_finish_field(action.pos_to):
-                steps = (64 - action.pos_from) + (action.pos_to - 72)
-            elif self.is_finish_field(action.pos_from):
-                steps = action.pos_to - action.pos_from
+                steps = 5  # For moving into finish area
+            elif self.is_finish_field(action.pos_from) and self.is_finish_field(action.pos_to):
+                steps = 2  # For moving within finish area
+            else:
+                steps = action.pos_to - action.pos_from if action.pos_to > action.pos_from else action.pos_to + 64 - action.pos_from
+
+            # Check entire path and kick out marbles
+            if not self.is_finish_field(action.pos_to):
+                cur_pos = action.pos_from
+                while cur_pos != action.pos_to:
+                    next_pos = (cur_pos + 1) % 64  # Stay on main board
+                    # Check for marble at next position
+                    occupant_idx = self.get_player_who_occupies_pos(next_pos)
+                    if occupant_idx is not None:
+                        occupant = state.list_player[occupant_idx]
+                        for m in occupant.list_marble:
+                            if m.pos == next_pos and not m.is_save:
+                                # Send to appropriate position based on owner
+                                if occupant_idx == state.idx_player_active:
+                                    m.pos = 64  # Own marble goes to start
+                                else:
+                                    m.pos = 72  # Opponent marble goes to kennel
+                                m.is_save = False
+                    cur_pos = next_pos
 
             # Move the marble
             for marble in player.list_marble:
                 if marble.pos == action.pos_from:
-                    # Handle kicking out marbles before moving
-                    if not self.is_finish_field(action.pos_to):
-                        for pos in range(action.pos_from + 1, action.pos_to + 1):
-                            if pos < 64:  # Only check main board
-                                occupant_idx = self.get_player_who_occupies_pos(pos)
-                                if occupant_idx is not None:
-                                    for m in state.list_player[occupant_idx].list_marble:
-                                        if m.pos == pos and not m.is_save:
-                                            m.pos = 72
-                                            m.is_save = False
-                    
                     marble.pos = action.pos_to
                     marble.is_save = False
                     break
 
+            # Update remaining steps
             state.seven_steps_remaining -= steps
-            
-            # Do NOT advance player turn after each step
-            # Only complete and advance when all steps are used
-            if state.seven_steps_remaining == 0:
+                    
+            # Only advance turn when all steps are used
+            if state.seven_steps_remaining <= 0:
+                # Remove the card
                 player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
+                # Reset seven card state
                 state.seven_steps_remaining = None
                 state.seven_backup_state = None
                 state.seven_player_idx = None
                 state.card_active = None
+                # Advance to next player
                 state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-            else:
-                # Keep card active during sequence
-                state.card_active = action.card
-            return
 
         # Joker transform action
         if action.card.rank == 'JKR' and action.pos_from == -1 and action.pos_to == -1 and action.card_swap is not None:
