@@ -344,8 +344,6 @@ async def dog_singleplayer_ws(websocket: WebSocket):
             else:
                 game.apply_action(None)
 
-        pass
-
     except WebSocketDisconnect:
         print('DISCONNECTED')
 
