@@ -122,6 +122,19 @@ class Dog(Game):
         active_player_idx = state.idx_player_active
         player = state.list_player[active_player_idx]
 
+        def is_path_blocked(pos_from: int, pos_to: int) -> bool:
+            """Check if path is blocked by any saved marbles"""
+            if pos_from >= pos_to:
+                return True  # Don't allow backward moves through saved marbles
+            for pos in range(pos_from + 1, pos_to + 1):
+                pos_check = pos % 64
+                occupant = self.get_player_who_occupies_pos(pos_check)
+                if occupant is not None:
+                    for m in state.list_player[occupant].list_marble:
+                        if m.pos == pos_check and m.is_save:
+                            return True
+            return False
+
         # Special handling for seven card moves
         if state.card_active and state.card_active.rank == '7' and state.seven_steps_remaining is not None:
             for marble in player.list_marble:
@@ -205,11 +218,10 @@ class Dog(Game):
                 for marble in player.list_marble:
                     if 0 <= marble.pos < 64:
                         for step in steps_list:
-                            new_pos = (marble.pos + step) % 96
-                            actions.append(Action(card=active_card, pos_from=marble.pos, pos_to=new_pos))
+                            new_pos = (marble.pos + step) % 64
+                            if not is_path_blocked(marble.pos, new_pos):
+                                actions.append(Action(card=active_card, pos_from=marble.pos, pos_to=new_pos))
             return actions
-
-        # If card_active is None, proceed with normal logic
 
         # START actions (A,K,JKR)
         for card in player.list_card:
@@ -223,8 +235,9 @@ class Dog(Game):
                 for marble in player.list_marble:
                     if 0 <= marble.pos < 64:
                         for step in steps_list:
-                            new_pos = (marble.pos + step) % 96
-                            actions.append(Action(card=card, pos_from=marble.pos, pos_to=new_pos))
+                            new_pos = (marble.pos + step) % 64
+                            if not is_path_blocked(marble.pos, new_pos):
+                                actions.append(Action(card=card, pos_from=marble.pos, pos_to=new_pos))
 
         # Joker transformations (if Joker in hand and card_active=None)
         jokers = [c for c in player.list_card if c.rank == 'JKR']
@@ -251,8 +264,8 @@ class Dog(Game):
                             all_marbles_positions.append((p_idx, m.pos, m.is_save))
 
                 our_marbles = [(p_idx, pos, is_save)
-                               for (p_idx, pos, is_save) in all_marbles_positions
-                               if p_idx == active_player_idx]
+                            for (p_idx, pos, is_save) in all_marbles_positions
+                            if p_idx == active_player_idx]
 
                 # Check if any opponent non-save marbles exist
                 opponent_swaps_available = False
