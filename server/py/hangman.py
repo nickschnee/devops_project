@@ -138,3 +138,35 @@ class Hangman:
             word_set = set(self.state.word_to_guess)
             if all(char in self.state.guesses for char in word_set):
                 self.state.phase = GamePhase.FINISHED
+    def get_available_actions(self) -> List[GuessLetterAction]:
+        """
+        Get a list of available letter actions for players or automated players.
+
+        Returns:
+            List[GuessLetterAction]: List of possible letter actions.
+        """
+        return self.get_list_action()
+
+class RandomPlayer:
+    """
+    A player that makes random guesses in the Hangman game.
+    """
+    def __init__(self) -> None:
+        self.guessed_letters: List[str] = []
+
+    def make_guess(self, available_actions: List[GuessLetterAction]) -> GuessLetterAction:
+        """
+        Make a random guess from the available actions.
+
+        Args:
+            available_actions (List[GuessLetterAction]): List of possible actions.
+
+        Returns:
+            GuessLetterAction: The randomly chosen action.
+        """
+        if not available_actions:
+            raise ValueError("No available actions to guess.")
+        
+        guess = random.choice(available_actions)
+        self.guessed_letters.append(guess.letter)
+        return guess
