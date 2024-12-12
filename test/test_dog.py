@@ -1236,7 +1236,75 @@ class TestDogBenchmark:
 
                 pos_from = pos_to
 
-        
+    def test_overtake_save_marble_1(self) -> None:
+        """Test 036: Test to overtake own marble on save start [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        card = Card(suit='♣', rank='5')
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = 63
+        player.list_marble[0].is_save = False
+        player.list_marble[1].pos = 0
+        player.list_marble[1].is_save = True
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action_found = self.game_server.get_list_action()
+        list_action_expected = [
+            Action(card=Card(suit='♣', rank='5'), pos_from=0, pos_to=5)
+        ]
+
+        hint = str_state
+        hint += 'Error: "get_list_action" result is wrong'
+        hint += f'\nExpected:'
+        hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+        hint += f'\nFound:'
+        hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+        hint += f'\nHint: Marbles on start with status "is_save"=True must be blocking.'
+        assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
+    def test_overtake_save_marble_2(self) -> None:
+        """Test 037: Test to overtake oponents marble on save start [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        card = Card(suit='♣', rank='5')
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = 15
+        player.list_marble[0].is_save = False
+        player = state.list_player[idx_player_active + 1]
+        player.list_marble[1].pos = 16
+        player.list_marble[1].is_save = True
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action_found = self.game_server.get_list_action()
+        list_action_expected = []
+
+        hint = str_state
+        hint += 'Error: "get_list_action" result is wrong'
+        hint += f'\nExpected:'
+        hint += f'\n{self.get_list_action_as_str(list_action_expected)}'
+        hint += f'\nFound:'
+        hint += f'\n{self.get_list_action_as_str(list_action_found)}'
+        hint += f'\nHint: Marbles on start with status "is_save"=True must be blocking.'
+        assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
     # helper functions our code needs to run
         
     def get_idx_marble(self, player: PlayerState, pos: int) -> int:
