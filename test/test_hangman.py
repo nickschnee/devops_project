@@ -1,5 +1,6 @@
 import pytest
 from server.py.hangman import Hangman, HangmanGameState, GamePhase, GuessLetterAction
+import string
 
 @pytest.fixture
 def game_server():
@@ -24,17 +25,17 @@ def test_action_list(game_server):
     # Initial actions
     actions = game_server.get_list_action()
     hint = "Initial actions list should contain all existing capital letters"
-    assert {action.letter for action in actions} == set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), hint
+    assert {action.letter for action in actions} == set(string.ascii_uppercase), hint
 
     # Testcase 1
     test_state1 = HangmanGameState(word_to_guess="", guesses=['A', 'B', 'C'], phase=GamePhase.RUNNING)
     game_server.set_state(test_state1)
     actions1 = game_server.get_list_action()
     hint = "Some 'guessed' letters are still in the action list"
-    assert {action.letter for action in actions1} == set('DEFGHIJKLMNOPQRSTUVWXYZ'), hint
+    assert {action.letter for action in actions1} == set(string.ascii_uppercase[3:]), hint
 
     # Testcase 2
-    test_state2 = HangmanGameState(word_to_guess="", guesses=[*'ABCDEFGHIJKLMNOPQRSTUVWXYZ'], phase=GamePhase.RUNNING)
+    test_state2 = HangmanGameState(word_to_guess="", guesses=[*string.ascii_uppercase], phase=GamePhase.RUNNING)
     game_server.set_state(test_state2)
     actions2 = game_server.get_list_action()
     assert len(actions2) == 0, "Having guessed all letters, the action list should be empty"
@@ -77,3 +78,31 @@ def test_secret_word_lowercase_letters(game_server):
     game_server.apply_action(GuessLetterAction(letter='x'))
     assert game_server.get_state().phase == GamePhase.FINISHED, "Game did not finish correctly with a lowercase letter in the word"
 
+def test_no_action_on_finished_game(game_server):
+    """Test 007: No actions are allowed on a finished game [1 point]"""
+    state = HangmanGameState(word_to_guess="HELLO", guesses=[*'AEIOUBCDF'], phase=GamePhase.FINISHED)
+    game_server.set_state(state)
+    with pytest.raises(RuntimeError):
+        game_server.apply_action(GuessLetterAction(letter='G'))
+
+def test_repeated_guess(game_server):
+    """Test 008: Repeated guesses should not alter the game state [1 point]"""
+    state = HangmanGameState(word_to_guess="HELLO", guesses=['H'], phase=GamePhase.RUNNING)
+    game_server.set_state(state)
+    game_server.apply_action(GuessLetterAction(letter='H'))
+    updated_state = game_server.get_state()
+    assert updated_state.guesses == ['H'], "Repeated guess changed the guesses list"
+
+def test_case_insensitivity_in_word(game_server):
+    """Test 009: Word with mixed-case letters is treated correctly [1 point]"""
+    state = HangmanGameState(word_to_guess="HeLLo", guesses=['H', 'E', 'L'], phase=GamePhase.RUNNING)
+    game_server.set_state(state)
+    game_server.apply_action(GuessLetterAction(letter='o'))
+    assert game_server.get_state().phase == GamePhase.FINISHED, "Mixed-case word not handled correctly"
+
+def test_word_with_special_characters(game_server):
+    """Test 010: Words with special characters are handled properly [1 point]"""
+    state = HangmanGameState(word_to_guess="C#D3", guesses=['C', '#', 'D'], phase=GamePhase.RUNNING)
+    game_server.set_state(state)
+    game_server.apply_action(GuessLetterAction(letter='3'))
+    assert game_server.get_state().phase == GamePhase.FINISHED, "Word with special characters not handled correctly"
