@@ -4,10 +4,6 @@ import random
 from server.py.game import Game, Player
 
 
-from typing import List, Optional
-from enum import Enum
-import random
-
 # Enums and Constants
 class ActionType(str, Enum):
     SET_SHIP = 'set_ship'
