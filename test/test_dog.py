@@ -1305,6 +1305,67 @@ class TestDogBenchmark:
         hint += f'\nHint: Marbles on start with status "is_save"=True must be blocking.'
         assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
 
+    def test_send_home_with_simple_cards(self):
+        """Test 038: Test send home with simple cards from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♦', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♥', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♠', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♣', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♦', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♥', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♠', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♣', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♦', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♥', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♠', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♣', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♦', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♥', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♠', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♣', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♦', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♥', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♠', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♣', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♦', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♥', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♠', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♣', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♦', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♥', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♠', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♣', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♦', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♥', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♠', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♣', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♦', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♥', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♠', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♣', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♦', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♥', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♠', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♣', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♦', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♥', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♠', rank='K'), 'list_steps': [13]},
+        ]
+        self.send_home_test(pos_from=0, list_test=list_test)
+
+    def test_send_home_with_SEVEN_from_start(self):
+        """Test 039: Test send home with card SEVEN from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♦', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♥', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♠', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+        ]
+        self.send_home_test(pos_from=0, list_test=list_test)
     # helper functions our code needs to run
         
     def get_idx_marble(self, player: PlayerState, pos: int) -> int:
@@ -1347,6 +1408,63 @@ class TestDogBenchmark:
         hint = str_states
         hint += f'Error: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
         assert found, hint
+
+    def get_cnt_marbles_in_kennel(self, state: dict, idx_player: int) -> int:
+        cnt_in_kennel = 0
+        player = state.list_player[idx_player]
+        for marble in player.list_marble:
+            if marble.pos >= self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 and \
+                    marble.pos < self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS:
+                cnt_in_kennel += 1
+        return cnt_in_kennel    
+
+    def send_home_test(self, pos_from: int, list_test: list[dict]) -> None:
+        for test in list_test:
+            card = test['card']
+            for steps in test['list_steps']:
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                for is_own_marble in [True, False]:
+                    self.send_home_marble(card=card, pos_from=pos_from, pos_to=pos_to, is_own_marble=is_own_marble)
+
+    def send_home_marble(self, card: str, pos_from: int, pos_to: int, is_own_marble: bool) -> None:
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = pos_from
+        player.list_marble[0].is_save = True
+        if is_own_marble:
+            player.list_marble[1].pos = pos_to
+            player.list_marble[1].is_save = False
+        else:
+            player = state.list_player[idx_player_active + 1]
+            player.list_marble[0].pos = pos_to
+            player.list_marble[0].is_save = False
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+        self.game_server.apply_action(action)
+        str_states += f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        if is_own_marble:
+            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active)
+            found = cnt_in_kennel == 3
+        else:
+            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active + 1)
+            found = cnt_in_kennel == 4
+        hint = str_states
+        hint += f'Error: Player 2\'s marble must be sent home with card={card}'
+        assert found, hint
+
         
     # end of helper functions
     # add new tests above helper functions block
