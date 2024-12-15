@@ -1467,7 +1467,7 @@ class TestDogBenchmark:
 
 
 
-        def test_overtake_with_simple_cards(self):
+    def test_overtake_with_simple_cards(self):
         """Test 040: Test overtake with simple cards from start [1 point]"""
 
         list_test = [
