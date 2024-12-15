@@ -1,9 +1,11 @@
 from server.py.game import Game, Player
+from typing import List, Optional, ClassVar, Tuple, Set
 from typing import List, Optional, ClassVar
 from pydantic import BaseModel
 from enum import Enum
 import random
 import copy
+from dataclasses import dataclass
 
 class Card(BaseModel):
     suit: str
@@ -49,6 +51,12 @@ class GamePhase(str, Enum):
     SETUP = 'setup'
     RUNNING = 'running'
     FINISHED = 'finished'
+
+@dataclass
+class ActionData:
+    card: 'Card'
+    pos_from: Optional[int]
+    pos_to: Optional[int]
 
 class GameState(BaseModel):
     LIST_SUIT: ClassVar[List[str]] = ['♠', '♥', '♦', '♣']
