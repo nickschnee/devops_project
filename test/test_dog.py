@@ -1456,16 +1456,11 @@ class TestDogBenchmark:
         str_states += str(state)
 
         if is_own_marble:
-            # When sending own marble home, check if it's in kennel
-            player = state.list_player[idx_player_active]
-            marble = player.list_marble[1]
-            found = marble.pos >= 64 and marble.pos < 68
+            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active)
+            found = cnt_in_kennel == 3
         else:
-            # When sending opponent's marble home, check if it's in their kennel
-            player = state.list_player[idx_player_active + 1]
-            marble = player.list_marble[0]
-            found = marble.pos >= 72 and marble.pos < 76  # Player 2's kennel range
-
+            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active + 1)
+            found = cnt_in_kennel == 4
         hint = str_states
         hint += f'Error: Player 2\'s marble must be sent home with card={card}'
         assert found, hint
