@@ -9,28 +9,33 @@ import copy
 from dataclasses import dataclass
 
 class Card(BaseModel):
-    suit: str
-    rank: str
+    suit: str  # card suit (color)
+    rank: str  # card rank
+
 
 class Marble(BaseModel):
-    pos: int
-    is_save: bool
+    pos: int       # position on board (0 to 95)
+    is_save: bool  # true if marble was moved out of kennel and was not yet moved
+
 
 class PlayerState(BaseModel):
-    name: str
-    list_card: List[Card]
-    list_marble: List[Marble]
+    name: str                  # name of player
+    list_card: List[Card]      # list of cards
+    list_marble: List[Marble]  # list of marbles
+
 
 class Action(BaseModel):
-    card: Card
-    pos_from: Optional[int]
-    pos_to: Optional[int]
-    card_swap: Optional[Card] = None
+    card: Card                 # card to play
+    pos_from: Optional[int]    # position to move the marble from
+    pos_to: Optional[int]      # position to move the marble to
+    card_swap: Optional[Card] = None # optional card to swap ()
+
 
 class GamePhase(str, Enum):
-    SETUP = 'setup'
-    RUNNING = 'running'
-    FINISHED = 'finished'
+    SETUP = 'setup'            # before the game has started
+    RUNNING = 'running'        # while the game is running
+    FINISHED = 'finished'      # when the game is finished
+
 
 @dataclass
 class ActionData:
@@ -39,12 +44,37 @@ class ActionData:
     pos_to: Optional[int]
 
 class GameState(BaseModel):
-    LIST_SUIT: ClassVar[List[str]] = ['♠', '♥', '♦', '♣']
+    """
+    Represents the complete state of the game at any given time.
+
+    Attributes:
+        LIST_SUIT (ClassVar[List[str]]): The list of card suits ('♠', '♥', '♦', '♣').
+        LIST_RANK (ClassVar[List[str]]): The list of card ranks ('2', '3', ..., 'A', 'JKR').
+        LIST_CARD (ClassVar[List[Card]]): The full deck of cards, with 2 copies (for a double deck).
+        cnt_player (int): Number of players in the game (default is 4).
+        phase (GamePhase): The current phase of the game (setup, running, or finished).
+        cnt_round (int): The current round number.
+        bool_game_finished (bool): True if the game has finished; False otherwise.
+        bool_card_exchanged (bool): True if cards have been exchanged in the current round; False otherwise.
+        idx_player_started (int): Index of the player who started the round.
+        idx_player_active (int): Index of the player currently taking their turn.
+        list_player (List[PlayerState]): A list of all players and their states (cards, marbles).
+        list_card_draw (List[Card]): The draw pile (cards yet to be drawn).
+        list_card_discard (List[Card]): The discard pile (cards that have been played or discarded).
+        card_active (Optional[Card]): The card currently being played (useful for multi-step actions like the 7 card).
+        seven_steps_remaining (Optional[int]): Remaining steps for completing a 7-card move.
+        seven_backup_state (Optional['GameState']): Backup state used to restore the game during a 7-card move if needed.
+        seven_player_idx (Optional[int]): The index of the player who is currently executing a 7-card move.
+    """
+    
+    # Class variables: Define suits, ranks, and the full deck of cards
+    LIST_SUIT: ClassVar[List[str]] = ['♠', '♥', '♦', '♣']  # Suits (colors)
     LIST_RANK: ClassVar[List[str]] = [
-        '2', '3', '4', '5', '6', '7', '8', '9', '10',
+        '2', '3', '4', '5', '6', '7', '8', '9', '10',  # Card ranks
         'J', 'Q', 'K', 'A', 'JKR'
     ]
     LIST_CARD: ClassVar[List[Card]] = [
+        # Create a complete deck of cards with suits and ranks
         Card(suit='♠', rank='2'), Card(suit='♥', rank='2'), Card(suit='♦', rank='2'), Card(suit='♣', rank='2'),
         Card(suit='♠', rank='3'), Card(suit='♥', rank='3'), Card(suit='♦', rank='3'), Card(suit='♣', rank='3'),
         Card(suit='♠', rank='4'), Card(suit='♥', rank='4'), Card(suit='♦', rank='4'), Card(suit='♣', rank='4'),
@@ -59,24 +89,49 @@ class GameState(BaseModel):
         Card(suit='♠', rank='K'), Card(suit='♥', rank='K'), Card(suit='♦', rank='K'), Card(suit='♣', rank='K'),
         Card(suit='♠', rank='A'), Card(suit='♥', rank='A'), Card(suit='♦', rank='A'), Card(suit='♣', rank='A'),
         Card(suit='', rank='JKR'), Card(suit='', rank='JKR'), Card(suit='', rank='JKR')
-    ] * 2
+    ] * 2  # Double deck
 
-    cnt_player: int = 4
-    phase: GamePhase = GamePhase.RUNNING
-    cnt_round: int = 1
-    bool_game_finished: bool = False
-    bool_card_exchanged: bool = False
-    idx_player_started: int = 0
-    idx_player_active: int = 0
-    list_player: List[PlayerState] = []
-    list_card_draw: List[Card] = []
-    list_card_discard: List[Card] = []
-    card_active: Optional[Card] = None
-    seven_steps_remaining: Optional[int] = None
-    seven_backup_state: Optional['GameState'] = None
-    seven_player_idx: Optional[int] = None
+    # Game state attributes
+    cnt_player: int = 4  # Number of players in the game (default is 4)
+    phase: GamePhase = GamePhase.RUNNING  # The current phase of the game (default is RUNNING)
+    cnt_round: int = 1  # The current round number (starts at 1)
+    bool_game_finished: bool = False  # Indicates if the game has finished
+    bool_card_exchanged: bool = False  # Indicates if cards were exchanged during the current round
+    idx_player_started: int = 0  # Index of the player who started the current round
+    idx_player_active: int = 0  # Index of the player currently taking their turn
+
+    # Player and card management
+    list_player: List[PlayerState] = []  # List of player states (including their cards and marbles)
+    list_card_draw: List[Card] = []  # Draw pile (remaining cards in the deck)
+    list_card_discard: List[Card] = []  # Discard pile (cards that have been played or discarded)
+
+    # Card-specific actions
+    card_active: Optional[Card] = None  # Card currently being played (for multi-step actions like the 7 card)
+    seven_steps_remaining: Optional[int] = None  # Steps remaining for completing a 7-card move
+    seven_backup_state: Optional['GameState'] = None  # Backup state during a 7-card sequence (for rollback purposes)
+    seven_player_idx: Optional[int] = None  # Index of the player executing the current 7-card move
+
 
 class Dog(Game):
+
+    KENNEL_POSITIONS = [
+        [64, 65, 66, 67],  # Positions for player index 0
+        [72, 73, 74, 75],  # Positions for player index 1
+        [80, 81, 82, 83],  # Positions for player index 2
+        [88, 89, 90, 91]  # Positions for player index 3
+    ]
+
+    # Define starting positions for each player
+    START_POSITION = [0, 16, 32, 48]
+
+    #Define Finish Position
+    FINISH_POSITIONS = [
+        [71, 70, 69, 68],  #  Positions for player index 0
+        [79, 78, 77, 76],  #  Positions for player index 1
+        [87, 86, 85, 84],  #  Positions for player index 2
+        [95, 94, 93, 92],  #  Positions for player index 3
+    ]
+    
     def __init__(self) -> None:
         self._state = GameState()
         self.reset()
