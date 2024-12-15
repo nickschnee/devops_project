@@ -1,3 +1,4 @@
+''' This Code implement game brandy dog'''
 from server.py.game import Game, Player
 from typing import List, Optional, ClassVar, Tuple, Set
 from typing import List, Optional, ClassVar
