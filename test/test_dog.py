@@ -1465,6 +1465,298 @@ class TestDogBenchmark:
         hint += f'Error: Player 2\'s marble must be sent home with card={card}'
         assert found, hint
 
+
+
+        def test_overtake_with_simple_cards(self):
+        """Test 040: Test overtake with simple cards from start [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='A'), 'list_steps': [11]},
+            {'card': Card(suit='♦', rank='A'), 'list_steps': [11]},
+            {'card': Card(suit='♥', rank='A'), 'list_steps': [11]},
+            {'card': Card(suit='♠', rank='A'), 'list_steps': [11]},
+            {'card': Card(suit='♣', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♦', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♥', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♠', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♣', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♦', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♥', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♠', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♣', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♦', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♥', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♠', rank='4'), 'list_steps': [4, -4]},
+            {'card': Card(suit='♣', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♦', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♥', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♠', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♣', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♦', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♥', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♠', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♣', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♦', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♥', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♠', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♣', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♦', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♥', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♠', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♣', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♦', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♥', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♠', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♣', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♦', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♥', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♠', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♣', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♦', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♥', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♠', rank='K'), 'list_steps': [13]},
+        ]
+        self.overtake_test(pos_from=0, list_test=list_test)
+
+    def test_move_to_empty_finish_with_simple_cards(self):
+        """Test 041: Test move to finish with simple cards [5 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♦', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♥', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♠', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♣', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♦', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♥', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♠', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♣', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♦', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♥', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♠', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♣', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♦', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♥', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♠', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♣', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♦', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♥', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♠', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♣', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♦', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♥', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♠', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♣', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♦', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♥', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♠', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♣', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♦', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♥', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♠', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♣', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♦', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♥', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♠', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♣', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♦', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♥', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♠', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♣', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♦', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♥', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♠', rank='K'), 'list_steps': [13]},
+        ]
+
+        for idx_player in range(4):
+            pos_finish = self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS
+            for i in range(4):
+                pos_to = pos_finish + i
+
+                for test in list_test:
+                    card = test['card']
+                    for steps in test['list_steps']:
+                        pos_start = idx_player * int(self.CNT_STEPS / self.CNT_PLAYERS)
+
+                        if pos_to - steps < pos_finish:
+                            pos_from = (pos_start - steps + (pos_to - pos_finish + 1) + self.CNT_STEPS) % self.CNT_STEPS
+                        else:
+                            pos_from = pos_to - steps
+
+                        self.move_marble_to_finish(card=card, pos_from=pos_from, pos_to=pos_to, idx_player=idx_player, steps=steps)
+
+    def test_move_to_empty_finish_with_negative_steps(self):
+        """Test 042: Test that can not move to finish with negative steps [1 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='4'), 'list_steps': [-4]},
+            {'card': Card(suit='♦', rank='4'), 'list_steps': [-4]},
+            {'card': Card(suit='♥', rank='4'), 'list_steps': [-4]},
+            {'card': Card(suit='♠', rank='4'), 'list_steps': [-4]},
+        ]
+
+        for idx_player in range(4):
+            pos_finish = self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS
+            for i in range(3):
+                pos_to = pos_finish + i
+
+                for test in list_test:
+                    card = test['card']
+                    for steps in test['list_steps']:
+                        pos_start = idx_player * int(self.CNT_STEPS / self.CNT_PLAYERS)
+
+                        pos_from = (pos_start + abs(steps) - (pos_to - pos_finish + 1) + self.CNT_STEPS) % self.CNT_STEPS
+                        self.move_marble_to_finish(card=card, pos_from=pos_from, pos_to=pos_to, idx_player=idx_player, steps=steps)
+
+    def test_not_overtaking_in_finish(self):
+        """Test 043: Test not overtaking in finish [5 point]"""
+
+        list_test = [
+            {'card': Card(suit='♣', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♦', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♥', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♠', rank='A'), 'list_steps': [1, 11]},
+            {'card': Card(suit='♣', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♦', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♥', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♠', rank='2'), 'list_steps': [2]},
+            {'card': Card(suit='♣', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♦', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♥', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♠', rank='3'), 'list_steps': [3]},
+            {'card': Card(suit='♣', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♦', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♥', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♠', rank='4'), 'list_steps': [4]},
+            {'card': Card(suit='♣', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♦', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♥', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♠', rank='5'), 'list_steps': [5]},
+            {'card': Card(suit='♣', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♦', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♥', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♠', rank='6'), 'list_steps': [6]},
+            {'card': Card(suit='♣', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♦', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♥', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♠', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
+            {'card': Card(suit='♣', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♦', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♥', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♠', rank='8'), 'list_steps': [8]},
+            {'card': Card(suit='♣', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♦', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♥', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♠', rank='9'), 'list_steps': [9]},
+            {'card': Card(suit='♣', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♦', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♥', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♠', rank='10'), 'list_steps': [10]},
+            {'card': Card(suit='♣', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♦', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♥', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♠', rank='Q'), 'list_steps': [12]},
+            {'card': Card(suit='♣', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♦', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♥', rank='K'), 'list_steps': [13]},
+            {'card': Card(suit='♠', rank='K'), 'list_steps': [13]},
+        ]
+
+        for idx_player in range(4):
+            pos_finish = self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS
+            for i in range(3):
+                pos_to = pos_finish + i + 1
+
+                for test in list_test:
+                    card = test['card']
+                    for steps in test['list_steps']:
+                        pos_start = idx_player * int(self.CNT_STEPS / self.CNT_PLAYERS)
+
+                        if pos_to - steps < pos_finish:
+                            pos_from = (pos_start - steps + (pos_to - pos_finish + 1) + self.CNT_STEPS) % self.CNT_STEPS
+                        else:
+                            pos_from = pos_to - steps
+
+                        self.move_marble_to_blocked_finish(card=card, pos_from=pos_from, pos_to=pos_to, idx_player=idx_player)
+
+    def test_card_exchange_at_beginning_of_round_1(self):
+        """Test 044: Test card exchange actions at beginning of round [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action_found = self.game_server.get_list_action()
+        list_action_expected = []
+
+        player = state.list_player[idx_player_active]
+        for card in player.list_card:
+            action = Action(card=card, pos_from=-1, pos_to=-1)
+            if action not in list_action_expected:
+                list_action_expected.append(action)
+
+        hint = str_state
+        hint += 'Error: "get_list_action" result is wrong'
+        hint += f'\nExpected:'
+        hint += f'\n{self.get_list_action_as_str(self.get_sorted_list_action(list_action_expected))}'
+        hint += f'\nFound:'
+        hint += f'\n{self.get_list_action_as_str(self.get_sorted_list_action(list_action_found))}'
+        assert self.get_sorted_list_action(list_action_found) == self.get_sorted_list_action(list_action_expected), hint
+
+    def test_card_exchange_at_beginning_of_round_2(self):
+        """Test 045: Test card exchange result at beginning of round [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        list_card = []
+        for player in state.list_player:
+            card = player.list_card[0]  # first card
+            list_card.append(card)
+            action = Action(card=card, pos_from=-1, pos_to=-1)
+            self.game_server.apply_action(action)
+            str_states += f'Action: {action}\n'
+
+        self.game_server.set_state(state)
+        str_states += str(state)
+
+        is_okay = True
+        for idx_player in range(self.CNT_PLAYERS):
+            idx_player_partner = (idx_player + 2) % self.CNT_PLAYERS
+            player = state.list_player[idx_player_partner]
+            card = list_card[idx_player]
+
+            is_okay = is_okay and card in player.list_card
+
+        hint = str_states
+        hint += 'Error: Card exchange had wrong result.'
+
+        assert is_okay, hint
+
+    def test_number_of_cards_in_round_1(self):
+        """Test 046: Test number of cards dealt in round 1 [1 point]"""
+        self.game_server.reset()
+        state = self.game_server.get_state()
+        str_state = str(state)
+        for idx_player in range(self.CNT_PLAYERS):
+            cnt_cards_found = len(state.list_player[idx_player].list_card)
+            cnt_cards_expected = 6
+            hint = str_state
+            hint += f'Error: Expected {cnt_cards_expected} cards, found {cnt_cards_found} cards.'
+            assert cnt_cards_found == cnt_cards_expected, hint
         
     # end of helper functions
     # add new tests above helper functions block
