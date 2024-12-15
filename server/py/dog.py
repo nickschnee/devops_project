@@ -13,26 +13,6 @@ class Card(BaseModel):
     suit: str
     rank: str
 
-    def __eq__(self, other: 'Card') -> bool:
-        if not isinstance(other, Card):
-            return False
-        return self.suit == other.suit and self.rank == other.rank
-
-    def __lt__(self, other: 'Card') -> bool:
-        # First compare by suit, then by rank
-        if self.suit != other.suit:
-            return self.suit < other.suit
-        return self.rank < other.rank
-
-    def __hash__(self):
-        # Important for sorting and set operations
-        return hash((self.suit, self.rank))
-
-    def __str__(self) -> str:
-        return f"Card(suit='{self.suit}', rank='{self.rank}')"
-
-    def __repr__(self) -> str:
-        return self.__str__()
 
 class Marble(BaseModel):
     pos: int
@@ -53,6 +33,12 @@ class GamePhase(str, Enum):
     SETUP = 'setup'
     RUNNING = 'running'
     FINISHED = 'finished'
+
+@dataclass
+class ActionData:
+    card : "Card"
+    pos_from: Optional[int]
+    pos_to : Optional[int]
 
 class GameState(BaseModel):
     LIST_SUIT: ClassVar[List[str]] = ['♠', '♥', '♦', '♣']
