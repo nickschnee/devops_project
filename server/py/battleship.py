@@ -22,21 +22,21 @@ class BattleshipAction:
         self.location = location
 
 class Ship:
-    def __init__(self, name: str, length: int) -> None:
+    def __init__(self, name: str, length: int, location: Optional[List[str]] = None) -> None:
         self.name = name
         self.length = length
-        self.location = []  # List of grid coordinates occupied by the ship
+        self.location = location if location is not None else []  # List of grid coordinates occupied by the ship
         self.hits = 0       # Count of hits on the ship
 
     def is_sunk(self) -> bool:
         return self.hits >= self.length
 
 class PlayerState:
-    def __init__(self, name: str, ships: List[Ship]) -> None:
+    def __init__(self, name: str, ships: List[Ship], shots: Optional[List[str]] = None, successful_shots: Optional[List[str]] = None) -> None:
         self.name = name
         self.ships = ships
-        self.shots = []  # All attempted shots
-        self.successful_shots = []  # Successful hits
+        self.shots = shots if shots is not None else []  # All attempted shots
+        self.successful_shots = successful_shots if successful_shots is not None else []  # Successful hits
 
     def all_ships_sunk(self) -> bool:
         return all(ship.is_sunk() for ship in self.ships)
@@ -63,7 +63,7 @@ class Battleship:
         )
 
     def create_ships(self) -> List[Ship]:
-        """ Create the default set of ships """
+        """ Create the default set of ships without initial locations """
         return [
             Ship("Carrier", 5),
             Ship("Battleship", 4),
@@ -71,6 +71,24 @@ class Battleship:
             Ship("Submarine", 3),
             Ship("Destroyer", 2)
         ]
+
+    def place_ship_randomly(self, ship: Ship, occupied_locations: set) -> None:
+        """ Randomly place a ship on the board either horizontally or vertically without overlap """
+        while True:
+            orientation = random.choice(['horizontal', 'vertical'])
+            if orientation == 'horizontal':
+                start_x = random.randint(1, 10 - ship.length + 1)
+                start_y = random.randint(1, 10)
+                new_location = [f"{chr(64 + start_x + i)}{start_y}" for i in range(ship.length)]
+            else:
+                start_x = random.randint(1, 10)
+                start_y = random.randint(1, 10 - ship.length + 1)
+                new_location = [f"{chr(64 + start_x)}{start_y + i}" for i in range(ship.length)]
+
+            if not any(loc in occupied_locations for loc in new_location):
+                ship.location = new_location
+                occupied_locations.update(new_location)
+                break
 
     def print_state(self) -> None:
         """ Print the current state for debugging """
@@ -173,7 +191,7 @@ class Battleship:
 
 # Random Player Implementation
 class RandomPlayer(PlayerState):
-    def __init__(self, name: str):
+    def __init__(self, name: str = "Random Player"):
         super().__init__(name, ships=[])
 
     def select_action(self, state: BattleshipGameState, actions: List[BattleshipAction]) -> Optional[BattleshipAction]:
