@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from enum import Enum
 import random
 import copy
+import logging
 
 class Card(BaseModel):
     """Represents a playing card with a suit and rank."""
@@ -143,7 +144,7 @@ class Dog(Game):
 
     def print_state(self) -> None:
         """Print the current game state."""
-        pass
+        logging.info(self._state)
 
     def get_player_who_occupies_pos(self, position: int) -> Optional[int]:
         """Return the index of the player who occupies a given position, or None if unoccupied."""
@@ -341,6 +342,12 @@ class Dog(Game):
                                 # No opponent swaps available -> self-swaps & non-save opp
                                 if p_idx_to == active_player_idx or not save_to:
                                     actions.append(Action(card=card, pos_from=pos_from, pos_to=pos_to))
+
+        # If cards haven't been exchanged at the beginning of the round
+        if not state.bool_card_exchanged:
+            # Return list of possible cards that can be exchanged
+            return [Action(card=card, pos_from=None, pos_to=None, card_swap=None) 
+                    for card in state.list_player[state.idx_player_active].list_card]
 
         return actions
     
