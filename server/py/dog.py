@@ -6,6 +6,17 @@ from typing import List, Optional, ClassVar
 from pydantic import BaseModel
 from server.py.game import Game, Player
 
+from typing import Any, Callable
+
+def log_method_call(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator to log method calls."""
+    def wrapper(*args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
+        logging.info(f"Calling method {func.__name__} with args: {args}, kwargs: {kwargs}")
+        result = func(*args, **kwargs)
+        logging.info(f"Method {func.__name__} returned: {result}")
+        return result
+    return wrapper
+
 class Card(BaseModel):
     """Represents a playing card with a suit and rank."""
     suit: str
