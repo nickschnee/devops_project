@@ -4,43 +4,63 @@ from pydantic import BaseModel
 from enum import Enum
 import random
 import copy
-from typing import List, Optional, ClassVar, Tuple, Set
-from itertools import combinations
-from dataclasses import dataclass
-
+import logging
 
 class Card(BaseModel):
+    """Represents a playing card with a suit and rank."""
     suit: str
     rank: str
 
+    def __eq__(self, other: object) -> bool:
+        """Check if two cards are equal based on suit and rank."""
+        if not isinstance(other, Card):
+            return False
+        return self.suit == other.suit and self.rank == other.rank
+
+    def __lt__(self, other: 'Card') -> bool:
+        """Compare two cards based on suit and rank."""
+        if self.suit != other.suit:
+            return self.suit < other.suit
+        return self.rank < other.rank
+
+    def __hash__(self) -> int:
+        """Generate a hash value for the card."""
+        return hash((self.suit, self.rank))
+
+    def __str__(self) -> str:
+        """Return a string representation of the card."""
+        return f"Card(suit='{self.suit}', rank='{self.rank}')"
+
+    def __repr__(self) -> str:
+        """Return a string representation of the card."""
+        return self.__str__()
 
 class Marble(BaseModel):
+    """Represents a marble with a position and save status."""
     pos: int
     is_save: bool
 
 class PlayerState(BaseModel):
+    """Represents the state of a player, including name, cards, and marbles."""
     name: str
     list_card: List[Card]
     list_marble: List[Marble]
 
 class Action(BaseModel):
+    """Represents an action in the game, including card, positions, and optional card swap."""
     card: Card
     pos_from: Optional[int]
     pos_to: Optional[int]
     card_swap: Optional[Card] = None
 
 class GamePhase(str, Enum):
+    """Enumeration of game phases."""
     SETUP = 'setup'
     RUNNING = 'running'
     FINISHED = 'finished'
 
-@dataclass
-class ActionData:
-    card : "Card"
-    pos_from: Optional[int]
-    pos_to : Optional[int]
-
 class GameState(BaseModel):
+    """Represents the state of the game, including players, cards, and game phase."""
     LIST_SUIT: ClassVar[List[str]] = ['♠', '♥', '♦', '♣']
     LIST_RANK: ClassVar[List[str]] = [
         '2', '3', '4', '5', '6', '7', '8', '9', '10',
@@ -79,11 +99,14 @@ class GameState(BaseModel):
     seven_player_idx: Optional[int] = None
 
 class Dog(Game):
+    """Represents the Dog game, inheriting from the Game class."""
     def __init__(self) -> None:
+        """Initialize the Dog game with a new game state and reset it."""
         self._state = GameState()
         self.reset()
 
     def reset(self) -> None:
+        """Reset the game state, shuffle cards, and distribute them to players."""
         all_cards = GameState.LIST_CARD.copy()
         random.shuffle(all_cards)
         
@@ -112,15 +135,19 @@ class Dog(Game):
         self._state.seven_player_idx = None
 
     def get_state(self) -> GameState:
+        """Return the current game state."""
         return self._state
 
     def set_state(self, state: GameState) -> None:
+        """Set the game state to a new state."""
         self._state = state
 
     def print_state(self) -> None:
-        pass
+        """Print the current game state."""
+        logging.info(self._state)
 
     def get_player_who_occupies_pos(self, position: int) -> Optional[int]:
+        """Return the index of the player who occupies a given position, or None if unoccupied."""
         for i, p in enumerate(self._state.list_player):
             for m in p.list_marble:
                 if m.pos == position:
@@ -128,13 +155,14 @@ class Dog(Game):
         return None
 
     def get_list_action(self) -> List[Action]:
+        """Return a list of possible actions for the active player."""
         state = self._state
         actions = []
         active_player_idx = state.idx_player_active
         player = state.list_player[active_player_idx]
 
         def is_path_blocked(pos_from: int, pos_to: int) -> bool:
-            """Check if path is blocked by any saved marbles"""
+            """Check if path is blocked by any saved marbles."""
             if pos_from >= pos_to:
                 return True  # Don't allow backward moves through saved marbles
             for pos in range(pos_from + 1, pos_to + 1):
@@ -315,10 +343,19 @@ class Dog(Game):
                                 if p_idx_to == active_player_idx or not save_to:
                                     actions.append(Action(card=card, pos_from=pos_from, pos_to=pos_to))
 
-        return actions
+        # Remove duplicates
+        unique_actions = []
+        seen = set()
+        for action in actions:
+            action_tuple = (action.card, action.pos_from, action.pos_to)
+            if action_tuple not in seen:
+                seen.add(action_tuple)
+                unique_actions.append(action)
+                
+        return unique_actions
     
     def is_path_clear(self, pos_from: int, pos_to: int) -> bool:
-        """Check if the path between two positions is clear (no marbles in between)"""
+        """Check if the path between two positions is clear (no marbles in between)."""
         if pos_from >= pos_to:
             return False
         
@@ -334,6 +371,7 @@ class Dog(Game):
         return True
     
     def apply_action(self, action: Optional[Action]) -> None:
+        """Apply a given action to the game state."""
         if action is None:
             if self._state.seven_backup_state is not None:
                 self._state = copy.deepcopy(self._state.seven_backup_state)
@@ -357,28 +395,31 @@ class Dog(Game):
         # Handle 7 card moves
         if action.card.rank == '7' and state.seven_steps_remaining is not None:
             # Calculate steps taken
-            if action.pos_from < 64 and self.is_finish_field(action.pos_to):
-                steps = 5  # For moving into finish area
-            elif self.is_finish_field(action.pos_from) and self.is_finish_field(action.pos_to):
-                steps = 2  # For moving within finish area
-            else:
-                steps = action.pos_to - action.pos_from if action.pos_to > action.pos_from else action.pos_to + 64 - action.pos_from
+            steps = 0
+            if action.pos_to is not None and action.pos_from is not None:
+                if action.pos_from < 64 and action.pos_to > 71 and action.pos_to < 80:
+                    steps = 5  # For moving into finish area
+                elif self.is_finish_field(action.pos_from) and self.is_finish_field(action.pos_to):
+                    steps = 2  # For moving within finish area
+                else:
+                    steps = action.pos_to - action.pos_from if action.pos_to > action.pos_from else action.pos_to + 64 - action.pos_from
 
             # First check if there's a marble at the destination
-            occupant_idx = self.get_player_who_occupies_pos(action.pos_to)
-            if occupant_idx is not None:
-                occupant = state.list_player[occupant_idx]
-                for m in occupant.list_marble:
-                    if m.pos == action.pos_to:
-                        if occupant_idx != active_player_idx:
-                            m.pos = 72  # Send opponent to kennel
-                            m.is_save = False
-                        else:
-                            m.pos = 64  # Send own marble to start
-                            m.is_save = False
+            if action.pos_to is not None:
+                occupant_idx = self.get_player_who_occupies_pos(action.pos_to)
+                if occupant_idx is not None:
+                    occupant = state.list_player[occupant_idx]
+                    for m in occupant.list_marble:
+                        if m.pos == action.pos_to:
+                            if occupant_idx != active_player_idx:
+                                m.pos = 72  # Send opponent to kennel
+                                m.is_save = False
+                            else:
+                                m.pos = 64  # Send own marble to start
+                                m.is_save = False
 
             # Then check path and kick out marbles
-            if not self.is_finish_field(action.pos_to):
+            if action.pos_to is not None and action.pos_from is not None and not self.is_finish_field(action.pos_to):
                 cur_pos = action.pos_from
                 while cur_pos != action.pos_to:
                     next_pos = (cur_pos + 1) % 64  # Stay on main board
@@ -396,11 +437,12 @@ class Dog(Game):
                     cur_pos = next_pos
 
             # Move the marble
-            for marble in player.list_marble:
-                if marble.pos == action.pos_from:
-                    marble.pos = action.pos_to
-                    marble.is_save = False
-                    break
+            if action.pos_from is not None and action.pos_to is not None:
+                for marble in player.list_marble:
+                    if marble.pos == action.pos_from:
+                        marble.pos = action.pos_to
+                        marble.is_save = False
+                        break
 
             # Update remaining steps
             state.seven_steps_remaining -= steps
@@ -419,7 +461,7 @@ class Dog(Game):
 
         # Joker transform action
         elif action.card.rank == 'JKR' and action.pos_from == -1 and action.pos_to == -1 and action.card_swap is not None:
-            # Transform Joker into card_swap
+            """Transform Joker into card_swap."""
             state.card_active = action.card_swap
             # Remove one Joker
             joker_found = False
@@ -433,7 +475,7 @@ class Dog(Game):
             return
 
         elif action.pos_from == 64 and action.pos_to == 0 and action.card.rank in ['A','K','JKR']:
-            # Start action
+            """Start action."""
             occupant_player_idx = self.get_player_who_occupies_pos(0)
             if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
                 opponent = state.list_player[occupant_player_idx]
@@ -451,7 +493,7 @@ class Dog(Game):
                     break
 
         elif action.card.rank == 'J':
-            # Swap action
+            """Swap action."""
             from_marble = None
             to_marble = None
             for p_idx, p in enumerate(state.list_player):
@@ -470,11 +512,11 @@ class Dog(Game):
                 state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
 
         else:
-            # Normal movement
+            """Normal movement."""
             for m in player.list_marble:
                 if m.pos == action.pos_from:
                     # Special handling for movement from start position
-                    if action.pos_from == 0:
+                    if action.pos_from == 0 and action.pos_to is not None:
                         # Check for marble at destination
                         occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
                         if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
@@ -485,39 +527,42 @@ class Dog(Game):
                                     omarble.is_save = False
 
                     # Before moving, handle any marble at the destination
-                    occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
-                    if occupant_player_idx is not None:
-                        if occupant_player_idx != active_player_idx:
-                            # Handle opponent's marble
-                            opponent = state.list_player[occupant_player_idx]
-                            for omarble in opponent.list_marble:
-                                if omarble.pos == action.pos_to and not omarble.is_save:
-                                    omarble.pos = 72  # Send to kennel zone
-                                    omarble.is_save = False
-                        else:
-                            # Handle own marble
-                            for own_marble in player.list_marble:
-                                if own_marble.pos == action.pos_to:
-                                    own_marble.pos = 64  # Send to start
-                                    own_marble.is_save = False
+                    if action.pos_to is not None:
+                        occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
+                        if occupant_player_idx is not None:
+                            if occupant_player_idx != active_player_idx:
+                                # Handle opponent's marble
+                                opponent = state.list_player[occupant_player_idx]
+                                for omarble in opponent.list_marble:
+                                    if omarble.pos == action.pos_to and not omarble.is_save:
+                                        omarble.pos = 72  # Send to kennel zone
+                                        omarble.is_save = False
+                            else:
+                                # Handle own marble
+                                for own_marble in player.list_marble:
+                                    if own_marble.pos == action.pos_to:
+                                        own_marble.pos = 64  # Send to start
+                                        own_marble.is_save = False
 
-                    # Move the marble
-                    m.pos = action.pos_to
-                    m.is_save = (action.pos_to == 0)  # Only saved if on start position
-                    
-                    # Important change: check for movement from start
-                    if action.pos_from == 0:
-                        m.is_save = False  # Marble is no longer protected after moving from start
-                    
-                    player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
-                    state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-                    break
+                        # Move the marble
+                        m.pos = action.pos_to
+                        m.is_save = (action.pos_to == 0)  # Only saved if on start position
+                        
+                        # Important change: check for movement from start
+                        if action.pos_from == 0:
+                            m.is_save = False  # Marble is no longer protected after moving from start
+                        
+                        player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
+                        state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+                        break
     
 
     def get_player_view(self, idx_player: int) -> GameState:
-        pass
+        """Return the game state from the perspective of a specific player."""
+        return copy.deepcopy(self._state)
 
     def is_finish_field(self, pos: int) -> bool:
+        """Check if a given position is in the finish area."""
         return pos >= 72 and pos < 80
 
     def compute_pos_to_for_7(self, pos_from: int, steps: int) -> Optional[int]:
@@ -542,6 +587,7 @@ class Dog(Game):
         return None
 
     def is_move_7_valid(self, marble_idx: int, pos_from: int, pos_to: int) -> bool:
+        """Check if a 7-card move is valid."""
         if pos_to is None:
             return False
         
@@ -568,8 +614,19 @@ class Dog(Game):
         
         return True
 
+    def get_joker_actions(self, player: PlayerState) -> List[Action]:
+        """Generate actions for JOKER card."""
+        actions = []
+        for suit in ['♠', '♥', '♦', '♣']:
+            actions.append(Action(card=Card(suit='', rank='JKR'), pos_from=64, pos_to=0))  # Move out of kennel
+            actions.append(Action(card=Card(suit='', rank='JKR'), pos_from=None, pos_to=None, card_swap=Card(suit=suit, rank='A')))
+            actions.append(Action(card=Card(suit='', rank='JKR'), pos_from=None, pos_to=None, card_swap=Card(suit=suit, rank='K')))
+        return actions
+
 class RandomPlayer(Player):
+    """Represents a random player who selects actions randomly."""
     def select_action(self, state: GameState, actions: List[Action]) -> Optional[Action]:
+        """Select a random action from the list of possible actions."""
         if actions:
             return random.choice(actions)
         return None
