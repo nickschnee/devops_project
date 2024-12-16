@@ -343,13 +343,16 @@ class Dog(Game):
                                 if p_idx_to == active_player_idx or not save_to:
                                     actions.append(Action(card=card, pos_from=pos_from, pos_to=pos_to))
 
-        # If cards haven't been exchanged at the beginning of the round
-        if not state.bool_card_exchanged:
-            # Return list of possible cards that can be exchanged
-            return [Action(card=card, pos_from=None, pos_to=None, card_swap=None) 
-                    for card in state.list_player[state.idx_player_active].list_card]
-
-        return actions
+        # Remove duplicates
+        unique_actions = []
+        seen = set()
+        for action in actions:
+            action_tuple = (action.card, action.pos_from, action.pos_to)
+            if action_tuple not in seen:
+                seen.add(action_tuple)
+                unique_actions.append(action)
+                
+        return unique_actions
     
     def is_path_clear(self, pos_from: int, pos_to: int) -> bool:
         """Check if the path between two positions is clear (no marbles in between)."""
@@ -605,6 +608,15 @@ class Dog(Game):
                     return False
         
         return True
+
+    def get_joker_actions(self, player):
+        """Generate actions for JOKER card."""
+        actions = []
+        for suit in ['♠', '♥', '♦', '♣']:
+            actions.append(Action(card=Card(suit='', rank='JKR'), pos_from=64, pos_to=0))  # Move out of kennel
+            actions.append(Action(card=Card(suit='', rank='JKR'), pos_from=None, pos_to=None, card_swap=Card(suit=suit, rank='A')))
+            actions.append(Action(card=Card(suit='', rank='JKR'), pos_from=None, pos_to=None, card_swap=Card(suit=suit, rank='K')))
+        return actions
 
 class RandomPlayer(Player):
     """Represents a random player who selects actions randomly."""
