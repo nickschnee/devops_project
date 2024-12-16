@@ -11,7 +11,7 @@ class Card(BaseModel):
     suit: str
     rank: str
 
-    def __eq__(self, other: 'Card') -> bool:
+    def __eq__(self, other: object) -> bool:
         """Check if two cards are equal based on suit and rank."""
         if not isinstance(other, Card):
             return False
@@ -23,7 +23,7 @@ class Card(BaseModel):
             return self.suit < other.suit
         return self.rank < other.rank
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Generate a hash value for the card."""
         return hash((self.suit, self.rank))
 
@@ -395,28 +395,31 @@ class Dog(Game):
         # Handle 7 card moves
         if action.card.rank == '7' and state.seven_steps_remaining is not None:
             # Calculate steps taken
-            if action.pos_from < 64 and self.is_finish_field(action.pos_to):
-                steps = 5  # For moving into finish area
-            elif self.is_finish_field(action.pos_from) and self.is_finish_field(action.pos_to):
-                steps = 2  # For moving within finish area
-            else:
-                steps = action.pos_to - action.pos_from if action.pos_to > action.pos_from else action.pos_to + 64 - action.pos_from
+            steps = 0
+            if action.pos_to is not None and action.pos_from is not None:
+                if action.pos_from < 64 and action.pos_to > 71 and action.pos_to < 80:
+                    steps = 5  # For moving into finish area
+                elif self.is_finish_field(action.pos_from) and self.is_finish_field(action.pos_to):
+                    steps = 2  # For moving within finish area
+                else:
+                    steps = action.pos_to - action.pos_from if action.pos_to > action.pos_from else action.pos_to + 64 - action.pos_from
 
             # First check if there's a marble at the destination
-            occupant_idx = self.get_player_who_occupies_pos(action.pos_to)
-            if occupant_idx is not None:
-                occupant = state.list_player[occupant_idx]
-                for m in occupant.list_marble:
-                    if m.pos == action.pos_to:
-                        if occupant_idx != active_player_idx:
-                            m.pos = 72  # Send opponent to kennel
-                            m.is_save = False
-                        else:
-                            m.pos = 64  # Send own marble to start
-                            m.is_save = False
+            if action.pos_to is not None:
+                occupant_idx = self.get_player_who_occupies_pos(action.pos_to)
+                if occupant_idx is not None:
+                    occupant = state.list_player[occupant_idx]
+                    for m in occupant.list_marble:
+                        if m.pos == action.pos_to:
+                            if occupant_idx != active_player_idx:
+                                m.pos = 72  # Send opponent to kennel
+                                m.is_save = False
+                            else:
+                                m.pos = 64  # Send own marble to start
+                                m.is_save = False
 
             # Then check path and kick out marbles
-            if not self.is_finish_field(action.pos_to):
+            if action.pos_to is not None and action.pos_from is not None and not self.is_finish_field(action.pos_to):
                 cur_pos = action.pos_from
                 while cur_pos != action.pos_to:
                     next_pos = (cur_pos + 1) % 64  # Stay on main board
@@ -434,11 +437,12 @@ class Dog(Game):
                     cur_pos = next_pos
 
             # Move the marble
-            for marble in player.list_marble:
-                if marble.pos == action.pos_from:
-                    marble.pos = action.pos_to
-                    marble.is_save = False
-                    break
+            if action.pos_from is not None and action.pos_to is not None:
+                for marble in player.list_marble:
+                    if marble.pos == action.pos_from:
+                        marble.pos = action.pos_to
+                        marble.is_save = False
+                        break
 
             # Update remaining steps
             state.seven_steps_remaining -= steps
@@ -512,7 +516,7 @@ class Dog(Game):
             for m in player.list_marble:
                 if m.pos == action.pos_from:
                     # Special handling for movement from start position
-                    if action.pos_from == 0:
+                    if action.pos_from == 0 and action.pos_to is not None:
                         # Check for marble at destination
                         occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
                         if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
@@ -523,38 +527,39 @@ class Dog(Game):
                                     omarble.is_save = False
 
                     # Before moving, handle any marble at the destination
-                    occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
-                    if occupant_player_idx is not None:
-                        if occupant_player_idx != active_player_idx:
-                            # Handle opponent's marble
-                            opponent = state.list_player[occupant_player_idx]
-                            for omarble in opponent.list_marble:
-                                if omarble.pos == action.pos_to and not omarble.is_save:
-                                    omarble.pos = 72  # Send to kennel zone
-                                    omarble.is_save = False
-                        else:
-                            # Handle own marble
-                            for own_marble in player.list_marble:
-                                if own_marble.pos == action.pos_to:
-                                    own_marble.pos = 64  # Send to start
-                                    own_marble.is_save = False
+                    if action.pos_to is not None:
+                        occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
+                        if occupant_player_idx is not None:
+                            if occupant_player_idx != active_player_idx:
+                                # Handle opponent's marble
+                                opponent = state.list_player[occupant_player_idx]
+                                for omarble in opponent.list_marble:
+                                    if omarble.pos == action.pos_to and not omarble.is_save:
+                                        omarble.pos = 72  # Send to kennel zone
+                                        omarble.is_save = False
+                            else:
+                                # Handle own marble
+                                for own_marble in player.list_marble:
+                                    if own_marble.pos == action.pos_to:
+                                        own_marble.pos = 64  # Send to start
+                                        own_marble.is_save = False
 
-                    # Move the marble
-                    m.pos = action.pos_to
-                    m.is_save = (action.pos_to == 0)  # Only saved if on start position
-                    
-                    # Important change: check for movement from start
-                    if action.pos_from == 0:
-                        m.is_save = False  # Marble is no longer protected after moving from start
-                    
-                    player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
-                    state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-                    break
+                        # Move the marble
+                        m.pos = action.pos_to
+                        m.is_save = (action.pos_to == 0)  # Only saved if on start position
+                        
+                        # Important change: check for movement from start
+                        if action.pos_from == 0:
+                            m.is_save = False  # Marble is no longer protected after moving from start
+                        
+                        player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
+                        state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+                        break
     
 
     def get_player_view(self, idx_player: int) -> GameState:
         """Return the game state from the perspective of a specific player."""
-        pass
+        return copy.deepcopy(self._state)
 
     def is_finish_field(self, pos: int) -> bool:
         """Check if a given position is in the finish area."""
@@ -609,7 +614,7 @@ class Dog(Game):
         
         return True
 
-    def get_joker_actions(self, player):
+    def get_joker_actions(self, player: PlayerState) -> List[Action]:
         """Generate actions for JOKER card."""
         actions = []
         for suit in ['♠', '♥', '♦', '♣']:
