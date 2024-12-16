@@ -1,7 +1,4 @@
-import copy
-import logging
-import random
-from enum import Enum
+from server.py.game import Game, Player
 from typing import List, Optional, ClassVar
 from pydantic import BaseModel
 from server.py.game import Game, Player
@@ -47,9 +44,9 @@ class Card(BaseModel):
         return self.__str__()
 
 class Marble(BaseModel):
-    """Represents a marble with a position and save status."""
-    pos: int
-    is_save: bool
+    pos: int       # position on board (0 to 95)
+    is_save: bool  # true if marble was moved out of kennel and was not yet moved
+
 
 class PlayerState(BaseModel):
     """Represents the state of a player, including name, cards, and marbles."""
@@ -94,20 +91,17 @@ class GameState(BaseModel):
         Card(suit='', rank='JKR'), Card(suit='', rank='JKR'), Card(suit='', rank='JKR')
     ] * 2
 
-    cnt_player: int = 4
-    phase: GamePhase = GamePhase.RUNNING
-    cnt_round: int = 1
-    bool_game_finished: bool = False
-    bool_card_exchanged: bool = False
-    idx_player_started: int = 0
-    idx_player_active: int = 0
-    list_player: List[PlayerState] = []
-    list_card_draw: List[Card] = []
-    list_card_discard: List[Card] = []
-    card_active: Optional[Card] = None
-    seven_steps_remaining: Optional[int] = None
-    seven_backup_state: Optional['GameState'] = None
-    seven_player_idx: Optional[int] = None
+    cnt_player: int = 4                # number of players (must be 4)
+    phase: GamePhase                   # current phase of the game
+    cnt_round: int                     # current round
+    bool_card_exchanged: bool          # true if cards was exchanged in round
+    idx_player_started: int            # index of player that started the round
+    idx_player_active: int             # index of active player in round
+    list_player: List[PlayerState]     # list of players
+    list_card_draw: List[Card]         # list of cards to draw
+    list_card_discard: List[Card]      # list of cards discarded
+    card_active: Optional[Card]        # active card (for 7 and JKR with sequence of actions)
+
 
 class Dog(Game):
     """Represents the Dog game, inheriting from the Game class."""
