@@ -2,7 +2,7 @@ import pytest
 from typing import List
 import sys
 import string
-from benchmark import Benchmark
+from benchmark.benchmark import Benchmark
 from server.py.battleship import BattleshipGameState, PlayerState, Ship, BattleshipAction, ActionType, GamePhase
 
 
