@@ -1071,8 +1071,8 @@ class Dog(Game):
             for pos in range(pos_from + 1, pos_to):
                 if self.get_player_who_occupies_pos(pos) is not None:
                     return False
-
         return True
+    
 
     def get_joker_actions(self, player: PlayerState) -> List[Action]:
         """Generate actions for JOKER card."""
