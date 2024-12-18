@@ -96,8 +96,8 @@ class GameState(BaseModel):
 
 
     cnt_player: int = 4
-    phase: GamePhase = GamePhase.RUNNING# Changed default from SETUP to RUNNING
-    cnt_round: int = 1 # Changed default from 0 to 1
+    phase: GamePhase = GamePhase.RUNNING
+    cnt_round: int = 1 
     bool_game_finished: bool = False
     bool_card_exchanged: bool = False
     idx_player_started: int = 0
@@ -148,8 +148,8 @@ class Dog(Game):
         
         self._state = GameState(
             cnt_player=4,
-            phase=GamePhase.RUNNING,  # Start in RUNNING phase
-            cnt_round=1,              # Start at round 1
+            phase=GamePhase.RUNNING,
+            cnt_round=1,              
             bool_game_finished=False,
             bool_card_exchanged=False,
             idx_player_started=0,
@@ -159,13 +159,13 @@ class Dog(Game):
                     name=f"Player {i}",
                     list_card=all_cards[i * cards_per_player:(i + 1) * cards_per_player],
                     list_marble=[
-                        Marble(pos=64 + i * 4 + j, is_save=False) 
+                        Marble(pos=self.KENNEL_POSITIONS[i][j], is_save=False) 
                         for j in range(4)
                     ]
                 )
                 for i in range(4)
             ],
-            list_card_draw=all_cards[24:],  # 4 players * 6 cards = 24 cards dealt
+            list_card_draw=all_cards[24:],  
             list_card_discard=[],
             card_active=None,
             seven_steps_remaining=None,
@@ -174,251 +174,343 @@ class Dog(Game):
         )
 
     def apply_action(self, action: Optional[Action]) -> None:
-        """Apply a given action to the game state."""
+        """Apply the given action to the game state."""
         state = self._state
-        active_player_idx = state.idx_player_active
-        player = state.list_player[active_player_idx]
         
-        # Handle round transitions when action is None
+        # Handle None action (folding or passing)
         if action is None:
-            # SEVEN card handling comes first
+            if not state.bool_card_exchanged:
+                # Check if we need to reshuffle
+                if len(state.list_card_draw) == 0:
+                    # Save all cards before reshuffling
+                    all_cards = state.list_card_discard[:]
+                    state.list_card_discard.clear()
+                    state.list_card_draw = all_cards
+                    random.shuffle(state.list_card_draw)
+
+                # Draw cards for active player
+                active_player = state.list_player[state.idx_player_active]
+                cards_needed = 6 - len(active_player.list_card)
+                
+                if cards_needed > 0:
+                    # If draw pile is empty, reshuffle discard pile
+                    if len(state.list_card_draw) < cards_needed and len(state.list_card_discard) > 0:
+                        state.list_card_draw.extend(state.list_card_discard)
+                        state.list_card_discard.clear()
+                        random.shuffle(state.list_card_draw)
+                    
+                    # Draw cards
+                    while len(active_player.list_card) < 6 and len(state.list_card_draw) > 0:
+                        active_player.list_card.append(state.list_card_draw.pop())
+
+                # Move to next player
+                state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+                
+                # Check if all players have their cards
+                all_players_have_cards = True
+                for player in state.list_player:
+                    if len(player.list_card) < 6:
+                        all_players_have_cards = False
+                        break
+                
+                if all_players_have_cards:
+                    state.bool_card_exchanged = True
+                    state.idx_player_active = state.idx_player_started
+                return
+
+            # Handle SEVEN card passing
             if state.card_active and state.card_active.rank == '7':
+                if state.seven_backup_state:
+                    self._state = copy.deepcopy(state.seven_backup_state)
+                    state = self._state
                 state.card_active = None
                 state.seven_steps_remaining = None
                 state.seven_backup_state = None
                 state.seven_player_idx = None
                 state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
                 return
-
-            # Check if player needs to fold cards
-            if not self.get_list_action():
+                
+            # Handle regular fold
+            player = state.list_player[state.idx_player_active]
+            if len(player.list_card) > 0:
+                state.list_card_discard.extend(player.list_card)
                 player.list_card = []
                 
-            # Handle round transitions
-            if state.idx_player_active == 0:
-                # Handle card exchange at beginning of round 1
-                if state.cnt_round == 1 and not state.bool_card_exchanged:
-                    state.bool_card_exchanged = True
-                    state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-                    return
-                    
-                # Check if all players have played their cards
-                all_cards_played = all(len(p.list_card) == 0 for p in state.list_player)
-                
-                if all_cards_played:
-                    # Special handling for round 1 to 2 transition
-                    if state.cnt_round == 1:
-                        if state.bool_card_exchanged:
-                            state.cnt_round = 2
-                    else:
-                        state.cnt_round += 1
-                    
-                    # Get cards for new round
-                    cards_per_player = self.get_cards_per_round(state.cnt_round)
-                    
-                # Rest of the card dealing logic remains the same...
-                    
-                    # Clear and deal new cards
-                    for p in state.list_player:
-                        state.list_card_discard.extend(p.list_card)
-                        p.list_card = []
-                            
-                    # Reshuffle if needed
-                    if len(state.list_card_draw) < cards_per_player * 4:
-                        state.list_card_draw.extend(state.list_card_discard)
-                        state.list_card_discard = []
-                        random.shuffle(state.list_card_draw)
-                            
-                    # Deal new cards
-                    for p in state.list_player:
-                        for _ in range(cards_per_player):
-                            if state.list_card_draw:
-                                card = state.list_card_draw.pop(0)
-                                p.list_card.append(card)
-            
-            # Move to next player
             state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-            return
-
-
-    
-    
-        # Initialize 7-card sequence
-        if action.card.rank == '7' and state.seven_steps_remaining is None:
-            state.card_active = action.card
-            state.seven_steps_remaining = 7
-            state.seven_backup_state = copy.deepcopy(state)
-            state.seven_player_idx = active_player_idx
             
-            # If there's an immediate move, process it
-            if action.pos_from is not None and action.pos_to is not None:
-                steps = self.calculate_steps(action.pos_from, action.pos_to)
-                if steps <= state.seven_steps_remaining:
-                    self.move_marble(action.pos_from, action.pos_to, active_player_idx)
-                    state.seven_steps_remaining -= steps
-                    
-                    if state.seven_steps_remaining <= 0:
-                        # Remove card and reset seven state
-                        player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
-                        state.seven_steps_remaining = None
-                        state.seven_backup_state = None
-                        state.seven_player_idx = None
-                        state.card_active = None
-                        state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+            # Check if round is complete
+            if state.idx_player_active == state.idx_player_started:
+                all_cards_played = all(len(p.list_card) == 0 for p in state.list_player)
+                if all_cards_played:
+                    # Ensure all cards are collected before new round
+                    if len(state.list_card_draw) == 0:
+                        state.list_card_draw = state.list_card_discard[:]
+                        state.list_card_discard.clear()
+                        random.shuffle(state.list_card_draw)
+                    self._start_new_round()
             return
 
-        # Handle subsequent 7 card moves
-        if state.card_active and state.card_active.rank == '7' and state.seven_steps_remaining is not None:
-            if action.pos_from is not None and action.pos_to is not None:
-                steps = self.calculate_steps(action.pos_from, action.pos_to)
-                if steps <= state.seven_steps_remaining:
-                    self.move_marble(action.pos_from, action.pos_to, active_player_idx)
-                    state.seven_steps_remaining -= steps
-                    
-                    if state.seven_steps_remaining <= 0:
-                        # Remove card and reset seven state
-                        player.list_card = [c for c in player.list_card if not (c.suit == state.card_active.suit and c.rank == state.card_active.rank)]
-                        state.seven_steps_remaining = None
-                        state.seven_backup_state = None
-                        state.seven_player_idx = None
-                        state.card_active = None
-                        state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+        # Handle card exchange at beginning of round
+        if not state.bool_card_exchanged and action.pos_from is None and action.pos_to is None:
+            self._handle_card_exchange(action.card)
             return
 
-        # Joker transform action
-        elif action.card.rank == 'JKR':
-            if action.pos_from == 64 and action.pos_to == 0:
-                # Handle moving from start to position 0
-                for m in player.list_marble:
-                    if m.pos == 64:
-                        # Check if position 0 is occupied
-                        occupant_idx = self.get_player_who_occupies_pos(0)
-                        if occupant_idx is not None and occupant_idx != active_player_idx:
-                            # Send opponent marble to kennel
-                            opponent = state.list_player[occupant_idx]
-                            for om in opponent.list_marble:
-                                if om.pos == 0:
-                                    om.pos = 72
-                                    om.is_save = False
-                        
-                        m.pos = 0
-                        m.is_save = True
-                        break
-                # Remove only one Joker
-                for i, card in enumerate(player.list_card):
-                    if card.rank == 'JKR':
-                        player.list_card.pop(i)
-                        break
-                state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+        # Handle Joker card transformation
+        if action.card_swap is not None:
+            state.card_active = action.card_swap
+            player = state.list_player[state.idx_player_active]
+            player.list_card.remove(action.card)
+            return
+
+        # Handle regular moves
+        player = state.list_player[state.idx_player_active]
+        
+        # Move marble
+        if action.pos_from is not None and action.pos_to is not None:
+            # Handle moving out of kennel first
+            if action.pos_from >= 64 and action.pos_from < 68:
+                # Capture any opponent marble on start position
+                self._handle_marble_capture(action.pos_to)
                 
-            elif action.pos_from == -1 and action.pos_to == -1 and action.card_swap is not None:
-                # Transform only one Joker into another card
-                for i, card in enumerate(player.list_card):
-                    if card.rank == 'JKR':
-                        player.list_card[i] = copy.deepcopy(action.card_swap)
-                        state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+                # Move marble out of kennel
+                for marble in player.list_marble:
+                    if marble.pos == action.pos_from:
+                        marble.pos = action.pos_to
+                        marble.is_save = True if action.pos_to % 16 == 0 else False
                         break
-            return
-
-        elif action.pos_from == 64 and action.pos_to == 0 and action.card.rank in ['A', 'K']:
-            """Start action."""
-            occupant_player_idx = self.get_player_who_occupies_pos(0)
-            if occupant_player_idx is not None and occupant_player_idx != active_player_idx:
-                opponent = state.list_player[occupant_player_idx]
-                for m in opponent.list_marble:
-                    if m.pos == 0:
-                        m.pos = 72
-                        m.is_save = False
-                        break
-            for m in player.list_marble:
-                if m.pos == 64:
-                    m.pos = 0
-                    m.is_save = True
-                    player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
-                    state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-                    break
-            return
-
-        elif action.card.rank == 'J':
-            """Swap action."""
-            # Find marbles to swap
-            from_marble = None
-            to_marble = None
-            
-            # Find the marbles to swap
-            for p in state.list_player:
-                for m in p.list_marble:
-                    if m.pos == action.pos_from:
-                        from_marble = m
-                    elif m.pos == action.pos_to:
-                        to_marble = m
-
-            # Only swap if both marbles exist and neither is in finish
-            if from_marble and to_marble and \
-            not self.is_finish_field(from_marble.pos) and \
-            not self.is_finish_field(to_marble.pos):
-                # Perform the swap
-                from_marble.pos, to_marble.pos = to_marble.pos, from_marble.pos
-                # Update save status
-                from_marble.is_save = (from_marble.pos == 0)
-                to_marble.is_save = (to_marble.pos == 0)
-                # Remove the card and advance turn
-                for i, card in enumerate(player.list_card):
-                    if card.rank == 'J' and card.suit == action.card.suit:
-                        player.list_card.pop(i)
-                        break
+                        
+                # Remove the used card
+                if state.card_active is None:
+                    state.card_active = action.card
+                    player.list_card.remove(action.card)
+                
+                # Move to next player
+                state.card_active = None
                 state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-            return
-
-        else:
-            """Normal movement."""
-            for m in player.list_marble:
-                if m.pos == action.pos_from:
-                    if action.pos_to is not None:
-                        # Check if moving to finish area
-                        if self.is_finish_position(action.pos_to, active_player_idx):
-                            # Check if path to finish is clear
-                            for other_marble in player.list_marble:
-                                if other_marble.pos < action.pos_to and \
-                                other_marble != m and \
-                                self.is_finish_position(other_marble.pos, active_player_idx):
-                                    # Can't overtake in finish area
-                                    return
-
-                        # Handle marble at destination
-                        occupant_player_idx = self.get_player_who_occupies_pos(action.pos_to)
-                        if occupant_player_idx is not None:
-                            if occupant_player_idx != active_player_idx:
-                                # Handle opponent's marble
-                                opponent = state.list_player[occupant_player_idx]
-                                for omarble in opponent.list_marble:
-                                    if omarble.pos == action.pos_to and not omarble.is_save:
-                                        omarble.pos = 72  # Send to kennel zone
-                                        omarble.is_save = False
-                            else:
-                                # Handle own marble
-                                for own_marble in player.list_marble:
-                                    if own_marble.pos == action.pos_to:
-                                        own_marble.pos = 64  # Send to start
-                                        own_marble.is_save = False
-
-                        # Move the marble
-                        m.pos = action.pos_to
-                        m.is_save = (action.pos_to == 0)
-
-                        if action.pos_from == 0:
-                            m.is_save = False
-
-                        # Remove the used card
-                        player.list_card = [c for c in player.list_card if not (c.suit == action.card.suit and c.rank == action.card.rank)]
+                return
+                
+            # Handle SEVEN card
+            if action.card.rank == '7':
+                if state.card_active is None:
+                    # Starting new SEVEN sequence
+                    state.card_active = action.card
+                    state.seven_steps_remaining = 7
+                    state.seven_backup_state = copy.deepcopy(state)
+                    state.seven_player_idx = state.idx_player_active
+                    player.list_card.remove(action.card)
+                
+                # Calculate steps used
+                if self.is_finish_field(action.pos_to):
+                    steps_used = action.pos_to - action.pos_from
+                else:
+                    steps_used = (action.pos_to - action.pos_from) % 64
+                
+                # Check if move is valid
+                if steps_used <= state.seven_steps_remaining:
+                    # Handle captures along the path
+                    for pos in range(action.pos_from + 1, action.pos_to + 1):
+                        pos = pos % 64 if not self.is_finish_field(pos) else pos
+                        for p in state.list_player:
+                            for marble in p.list_marble:
+                                if marble.pos == pos and not marble.is_save:
+                                    marble.pos = 64 + (8 * state.list_player.index(p))
+                    
+                    # Move the marble
+                    for marble in player.list_marble:
+                        if marble.pos == action.pos_from:
+                            marble.pos = action.pos_to
+                            if action.pos_to == 0:
+                                marble.is_save = True
+                            break
+                    
+                    # Update remaining steps
+                    state.seven_steps_remaining -= steps_used
+                    
+                    # Check if SEVEN sequence is complete
+                    if state.seven_steps_remaining == 0:
+                        state.card_active = None
+                        state.seven_steps_remaining = None
+                        state.seven_backup_state = None
+                        state.seven_player_idx = None
                         state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-                        break
-                     
+            else:
+                # Regular card move
+                if state.card_active is None:
+                    state.card_active = action.card
+                    player.list_card.remove(action.card)
+                
+                # Handle Jack swaps
+                if action.card.rank == 'J':
+                    marble_from = None
+                    marble_to = None
+                    
+                    for p in state.list_player:
+                        for m in p.list_marble:
+                            if m.pos == action.pos_from:
+                                marble_from = m
+                            elif m.pos == action.pos_to:
+                                marble_to = m
+                    
+                    if marble_from and marble_to:
+                        marble_from.pos, marble_to.pos = marble_to.pos, marble_from.pos
+                else:
+                    # Regular move
+                    self._handle_marble_capture(action.pos_to)
+                    
+                    for marble in player.list_marble:
+                        if marble.pos == action.pos_from:
+                            marble.pos = action.pos_to
+                            if action.pos_to == 0:
+                                marble.is_save = True
+                            break
+                
+                # Move to next player
+                state.card_active = None
+                state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+
+
+    def _start_new_round(self) -> None:
+        """Start a new round of the game."""
+        state = self._state
+        state.cnt_round += 1
         
+        # Get cards per player for this round
+        cards_per_player = self._get_cards_per_round(state.cnt_round)
+        cards_needed = cards_per_player * state.cnt_player
         
+        # Before reshuffling, ensure all cards are accounted for
+        total_cards = len(state.list_card_draw) + len(state.list_card_discard)
+        for player in state.list_player:
+            total_cards += len(player.list_card)
         
+        # If draw pile doesn't have enough cards, reshuffle all cards
+        if len(state.list_card_draw) < cards_needed:
+            # Collect all cards
+            all_cards = []
+            
+            # Get cards from discard pile
+            all_cards.extend(state.list_card_discard)
+            state.list_card_discard = []
+            
+            # Get cards from draw pile
+            all_cards.extend(state.list_card_draw)
+            state.list_card_draw = []
+            
+            # Get cards from players
+            for player in state.list_player:
+                all_cards.extend(player.list_card)
+                player.list_card = []
+            
+            # Shuffle all collected cards
+            random.shuffle(all_cards)
+            
+            # Put all cards in draw pile
+            state.list_card_draw = all_cards
         
+        # Deal new cards
+        for player in state.list_player:
+            player.list_card = []
+            for _ in range(cards_per_player):
+                if state.list_card_draw:
+                    player.list_card.append(state.list_card_draw.pop(0))
+                else:
+                    state.bool_game_finished = True
+                    return
         
+        # Reset round state
+        state.bool_card_exchanged = False
+        state.card_active = None
+        state.seven_steps_remaining = None
+        state.seven_backup_state = None
+        state.seven_player_idx = None
+        
+        # Update starting player
+        state.idx_player_started = (state.idx_player_started + 1) % state.cnt_player
+        state.idx_player_active = state.idx_player_started
+        
+
+    def _handle_marble_capture(self, pos_to: int, pos_from: Optional[int] = None) -> None:
+        """Send marbles at pos_to back to their kennels."""
+        state = self._state
+        active_player = state.list_player[state.idx_player_active]
+
+        # For Seven card, check all positions in the path
+        if state.card_active and state.card_active.rank == '7' and pos_from is not None:
+            start_pos = min(pos_from, pos_to)
+            end_pos = max(pos_from, pos_to)
+            
+            # Check each position in the path
+            for pos in range(start_pos + 1, end_pos + 1):
+                pos = pos % 64  # Wrap around board
+                for player in state.list_player:
+                    for marble in player.list_marble:
+                        if marble.pos == pos and not marble.is_save:
+                            # Send marble back to kennel
+                            marble.pos = 64 + (8 * state.list_player.index(player))
+        else:
+            # Regular capture at destination
+            for player in state.list_player:
+                for marble in player.list_marble:
+                    if marble.pos == pos_to and not marble.is_save:
+                        marble.pos = 64 + (8 * state.list_player.index(player))
+
+    def _copy_game_state(self) -> GameState:
+        """Create a deep copy of the current game state."""
+        state = self._state
+        return GameState(
+            cnt_player=state.cnt_player,
+            phase=state.phase,
+            cnt_round=state.cnt_round,
+            bool_game_finished=state.bool_game_finished,
+            bool_card_exchanged=state.bool_card_exchanged,
+            idx_player_started=state.idx_player_started,
+            idx_player_active=state.idx_player_active,
+            list_player=[
+                PlayerState(
+                    name=p.name,
+                    list_card=p.list_card.copy(),
+                    list_marble=[
+                        Marble(pos=m.pos, is_save=m.is_save)
+                        for m in p.list_marble
+                    ]
+                )
+                for p in state.list_player
+            ],
+            list_card_draw=state.list_card_draw.copy(),
+            list_card_discard=state.list_card_discard.copy(),
+            card_active=state.card_active,
+            seven_steps_remaining=state.seven_steps_remaining,
+            seven_backup_state=None,  # Don't copy backup state
+            seven_player_idx=state.seven_player_idx
+        )
+         
+    
+    def _handle_card_exchange(self, card: Card) -> None:
+        """Handle card exchange between partners."""
+        state = self._state
+        active_player = state.list_player[state.idx_player_active]
+        partner_idx = (state.idx_player_active + 2) % 4
+        partner = state.list_player[partner_idx]
+        
+        # Exchange cards
+        active_player.list_card.remove(card)
+        partner.list_card.append(card)
+        
+        # Move to next player
+        state.idx_player_active = (state.idx_player_active + 1) % 4
+        
+        # Check if exchange is complete
+        if state.idx_player_active == state.idx_player_started:
+            state.bool_card_exchanged = True
+
+    def _get_cards_per_round(self, round_num: int) -> int:
+        """Return number of cards to deal per player for given round."""
+        if round_num in [1, 6]:
+            return 6
+        elif round_num in [2, 3, 4]:
+            return 5
+        else:
+            return 2  
 
     def get_state(self) -> GameState:
         """Return the current game state."""
@@ -454,18 +546,16 @@ class Dog(Game):
         self._state.list_card_draw = all_cards[4 * cards_per_player:]
         self._state.list_card_discard = []
 
-    def get_cards_per_round(self, round_number: int) -> int:
-        """Return the number of cards to deal per player for a given round."""
-        cards_per_round = {
-            0: 6,
-            1: 6,
-            2: 5,
-            3: 4,
-            4: 3,
-            5: 2,
-            6: 6
-        }
-        return cards_per_round.get(round_number, 6)
+    def get_cards_per_round(self, round_num: int) -> int:
+        """Return number of cards to deal per player for given round."""
+        if round_num in [1, 6]:
+            return 6
+        elif round_num in [2, 3, 4]:
+            return 5
+        elif round_num == 5:
+            return 2
+        else:
+            return 6  # Default to 6 cards
 
     # Card Management Methods
     def reshuffle_cards(self, state):
@@ -554,41 +644,42 @@ class Dog(Game):
 
     # Special Game State Methods
     def start_game_state_at_round_2(self):
-        """Set up game state for round 2."""
+        """Set up game state for round 2 with differing 'idx_player_started' and 'idx_player_active'."""
         all_cards = GameState.LIST_CARD.copy()
         random.shuffle(all_cards)
-        
+
+        # Assign 5 cards to each player, assuming round 2 setup
+        players = []
+        for i in range(4):
+            player_cards = all_cards[i * 5:(i + 1) * 5]
+            player_marbles = [Marble(pos=64 + i * 4 + j, is_save=False) for j in range(4)]
+            players.append(PlayerState(
+                name=f"Player {i}",
+                list_card=player_cards,
+                list_marble=player_marbles
+            ))
+
+        # Ensure 'idx_player_started' and 'idx_player_active' are different
+        idx_started = 0
+        idx_active = (idx_started + 1) % 4  # Ensure different from idx_started
+
+        # Set game state for round 2
         self._state = GameState(
             cnt_player=4,
             phase=GamePhase.RUNNING,
             cnt_round=2,
             bool_game_finished=False,
-            bool_card_exchanged=True,
-            idx_player_started=0,
-            idx_player_active=1,
-            list_player=[],
-            list_card_draw=[],
-            list_card_discard=[],
-            card_active=None,
-            seven_steps_remaining=None,
-            seven_backup_state=None,
-            seven_player_idx=None
+            bool_card_exchanged=False,
+            idx_player_started=idx_started,
+            idx_player_active=idx_active,
+            list_player=players,
+            list_card_draw=all_cards[20:],  # Remaining cards go to draw pile
+            list_card_discard=[]
         )
-        
-        for i in range(4):
-            start_idx = i * 5
-            end_idx = start_idx + 5
-            player_cards = all_cards[start_idx:end_idx]
-            player_marbles = [Marble(pos=64 + j, is_save=False) for j in range(4)]
-            
-            player = PlayerState(
-                name=f"Player {i}",
-                list_card=player_cards,
-                list_marble=player_marbles
-            )
-            self._state.list_player.append(player)
-        
-        self._state.list_card_draw = all_cards[20:]
+        # Log state for debugging
+        print("Debug State at Round 2 Start:")
+        print("Started:", self._state.idx_player_started, "Active:", self._state.idx_player_active)
+       
 
     def get_list_action(self) -> List[Action]:
         """Return a list of possible actions for the active player."""
@@ -611,7 +702,7 @@ class Dog(Game):
             '10': [10],
             'Q': [12],
             'K': [13],
-            'JKR': []  # Special handling for Joker
+            'JKR': []  
         }
 
         def is_path_blocked(pos_from: int, pos_to: int) -> bool:
@@ -731,71 +822,92 @@ class Dog(Game):
             if card.rank in move_options:
                 steps_list = move_options[card.rank]
                 for marble in player.list_marble:
-                    if 0 <= marble.pos < 64:
+                    if 0 <= marble.pos < 64:  # Marble on main board
                         for step in steps_list:
+                            # Try regular move on board
                             new_pos = (marble.pos + step) % 64
                             if not is_path_blocked(marble.pos, new_pos):
                                 actions.append(Action(card=card, pos_from=marble.pos, pos_to=new_pos))
+                            
+                            # Try move to finish area
+                            finish_start = 64 + active_player_idx * 8
+                            finish_entry = active_player_idx * 16
+                            
+                            if marble.pos <= finish_entry < (marble.pos + step):
+                                remaining_steps = step - (finish_entry - marble.pos + 1)
+                                if 0 <= remaining_steps < 4:
+                                    finish_pos = finish_start + remaining_steps
+                                    if self.can_move_to_finish(marble.pos, finish_pos, active_player_idx):
+                                        actions.append(Action(card=card, pos_from=marble.pos, pos_to=finish_pos))
 
         # Joker transformations
         jokers = [c for c in player.list_card if c.rank == 'JKR']
         if jokers:
             joker_card = jokers[0]
+            suits = ['♠', '♥', '♦', '♣']
             
             if state.card_active is None:
+                # Check if we have any marbles in kennel
                 if has_marble_at_64:
                     actions.append(Action(card=joker_card, pos_from=64, pos_to=0))
                 
-                # Allow transforming into all suits
-                for suit in ['♠', '♥', '♦', '♣']:
-                    for rank in ['A', 'K']:
-                        actions.append(Action(
-                            card=joker_card,
-                            pos_from=None,
-                            pos_to=None,
-                            card_swap=Card(suit=suit, rank=rank)
-                        ))
+                # If marble in kennel, only allow A and K transformations
+                if has_marble_at_64:
+                    for suit in suits:
+                        for rank in ['A', 'K']:
+                            actions.append(Action(
+                                card=joker_card,
+                                pos_from=None,
+                                pos_to=None,
+                                card_swap=Card(suit=suit, rank=rank)
+                            ))
+                else:
+                    # In later game, allow transformation to any card
+                    ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+                    for suit in suits:
+                        for rank in ranks:
+                            actions.append(Action(
+                                card=joker_card,
+                                pos_from=None,
+                                pos_to=None,
+                                card_swap=Card(suit=suit, rank=rank)
+                            ))
             elif state.card_active.rank == 'JKR':
                 if has_marble_at_64:
                     actions.append(Action(card=joker_card, pos_from=64, pos_to=0))
-
+                    
         # J (Jack) card swap actions
         for card in player.list_card:
             if card.rank == 'J':
                 # Gather all marbles on board
-                all_marbles_positions = []
+                our_marbles = []
+                opponent_marbles = []
+                
+                # Collect marble positions
                 for p_idx, p in enumerate(state.list_player):
-                    for m in p.list_marble:
-                        if 0 <= m.pos < 64:
-                            all_marbles_positions.append((p_idx, m.pos, m.is_save))
+                    for marble in p.list_marble:
+                        if 0 <= marble.pos < 64: 
+                            if p_idx == active_player_idx:
+                                our_marbles.append(marble.pos)  
+                            elif not marble.is_save:  
+                                opponent_marbles.append(marble.pos)
 
-                our_marbles = [(p_idx, pos, is_save)
-                            for (p_idx, pos, is_save) in all_marbles_positions
-                            if p_idx == active_player_idx]
-
-                # Check if any opponent non-save marbles exist
-                opponent_swaps_available = False
-                for (_, pos_from, _) in our_marbles:
-                    for (p_idx_to, pos_to, save_to) in all_marbles_positions:
-                        if pos_from != pos_to and p_idx_to != active_player_idx and not save_to:
-                            opponent_swaps_available = True
-                            break
-                    if opponent_swaps_available:
-                        break
-
-                # Add actions
-                for (_, pos_from, _) in our_marbles:
-                    for (p_idx_to, pos_to, save_to) in all_marbles_positions:
-                        if pos_from != pos_to:
-                            if opponent_swaps_available:
-                                # Only opponent non-save swaps
-                                if p_idx_to != active_player_idx and not save_to:
-                                    actions.append(Action(card=card, pos_from=pos_from, pos_to=pos_to))
-                            else:
-                                # No opponent swaps available -> self-swaps & non-save opp
-                                if p_idx_to == active_player_idx or not save_to:
-                                    actions.append(Action(card=card, pos_from=pos_from, pos_to=pos_to))
-
+                # If there are opponent marbles available, generate swaps with them
+                if opponent_marbles:
+                    # Generate swaps between our marbles and opponent marbles
+                    for our_pos in our_marbles:
+                        for opp_pos in opponent_marbles:
+                            actions.append(Action(card=card, pos_from=our_pos, pos_to=opp_pos))
+                            actions.append(Action(card=card, pos_from=opp_pos, pos_to=our_pos))
+                else:
+                    # If no opponent swaps available, allow swaps between our own marbles
+                    if len(our_marbles) >= 2:
+                        for i, pos1 in enumerate(our_marbles):
+                            for pos2 in our_marbles[i+1:]:
+                                actions.append(Action(card=card, pos_from=pos1, pos_to=pos2))
+                                actions.append(Action(card=card, pos_from=pos2, pos_to=pos1))
+                                
+                                
         # Remove duplicates
         unique_actions = []
         seen = set()
@@ -811,12 +923,7 @@ class Dog(Game):
                 unique_actions.append(action)
 
         return unique_actions
-
-
-
-
-       
-                                            
+                                           
     def calculate_steps(self, pos_from: int, pos_to: int) -> int:
         """Calculate number of steps between positions"""
         if pos_from < 64 and pos_to > 71:  # Moving to finish
@@ -852,37 +959,71 @@ class Dog(Game):
                     m.is_save = False
                 break
                 
-    def _calculate_new_position(self, current_pos: int, steps: int, player_idx: int) -> int:
-        """Calculate new position after moving steps forward."""
-        if current_pos >= 64:  # In finish area
-            new_pos = current_pos + steps
-            if new_pos < 80:  # Check within finish area
-                # Check if position is blocked by own marble
-                if self.get_player_who_occupies_pos(new_pos) == player_idx:
-                    return -1
-                return new_pos
-            return -1
-
-        # On main board
-        new_pos = (current_pos + steps) % 64
-        
-        # Check if crossing finish line
-        start_pos = self.START_POSITION[player_idx]
-        if current_pos <= start_pos and new_pos > start_pos:
-            # Calculate finish position
-            steps_past_start = new_pos - start_pos
-            finish_pos = 72 + (player_idx * 4) + steps_past_start - 1
-            if finish_pos < 72 + (player_idx + 1) * 4:  # Within player's finish area
-                return finish_pos
+    def _calculate_new_position(self, pos_from: int, steps: int, player_idx: int) -> int:
+        """Calculate new position after moving steps, considering finish area."""
+        if pos_from >= 64:  # In kennel
             return -1
             
+        # Calculate finish entry point
+        finish_entry = player_idx * 16
+        finish_start = 64 + player_idx * 8
+        
+        # If already in finish area
+        if self.is_finish_field(pos_from):
+            new_pos = pos_from + steps
+            if finish_start <= new_pos < finish_start + 4:  # Valid finish position
+                return new_pos
+            return -1
+        
+        # Calculate new position on main board
+        new_pos = (pos_from + steps) % 64
+        
+        # Check if we should enter finish area
+        if pos_from <= finish_entry < new_pos:
+            remaining_steps = steps - (finish_entry - pos_from + 1)
+            if 0 <= remaining_steps < 4:  # Must have enough steps left to enter finish
+                return finish_start + remaining_steps
+                
         return new_pos
+
+    def can_move_to_finish(self, pos_from: int, pos_to: int, player_idx: int) -> bool:
+        """Check if a move to finish area is valid."""
+        if not self.is_finish_field(pos_to):
+            return True
+            
+        finish_start = 64 + player_idx * 8
+        finish_end = finish_start + 4
+        
+        # Check if target position is in player's finish area
+        if not (finish_start <= pos_to < finish_end):
+            return False
+            
+        # If already in finish area
+        if self.is_finish_field(pos_from):
+            return pos_from < pos_to and all(
+                self.get_player_who_occupies_pos(pos) is None
+                for pos in range(pos_from + 1, pos_to)
+            )
+        
+        # Coming from main board
+        finish_entry = player_idx * 16
+        
+        # Check if path to finish entry is clear
+        for pos in range(pos_from + 1, finish_entry + 1):
+            pos_check = pos % 64
+            if self.get_player_who_occupies_pos(pos_check) is not None:
+                return False
+                
+        # Check if finish area path is clear
+        for pos in range(finish_start, pos_to):
+            if self.get_player_who_occupies_pos(pos) is not None:
+                return False
+                
+        return True
 
     def get_player_view(self, idx_player: int) -> GameState:
         """Return the game state from the perspective of a specific player."""
         return copy.deepcopy(self._state)
-
-
 
     def compute_pos_to_for_7(self, pos_from: int, steps: int) -> Optional[int]:
         """
@@ -895,12 +1036,12 @@ class Dog(Game):
             else:  # Enter finish area
                 remaining = steps - (63 - pos_from)
                 finish_pos = 72 + remaining - 1
-                if finish_pos < 80:  # Check within finish area
+                if finish_pos < 80:  
                     return finish_pos
                 return None
-        elif self.is_finish_field(pos_from):  # If in finish area
+        elif self.is_finish_field(pos_from):  
             new_pos = pos_from + steps
-            if new_pos < 80:  # Check within finish area
+            if new_pos < 80:  
                 return new_pos
             return None
         return None
