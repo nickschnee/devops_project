@@ -2,6 +2,7 @@
 
 import sys
 import os
+import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from server.py.dog import Card, Marble, PlayerState, Action, GameState, GamePhase, Dog
@@ -1396,105 +1397,7 @@ class TestDogBenchmark:
             {'card': Card(suit='♠', rank='7'), 'list_steps': [1, 2, 3, 4, 5, 6, 7]},
         ]
         self.send_home_test(pos_from=0, list_test=list_test)
-    # helper functions our code needs to run
         
-    def get_idx_marble(self, player: PlayerState, pos: int) -> int:
-        for idx_marble, marble in enumerate(player.list_marble):
-            if marble.pos == pos:
-                return idx_marble
-        return -1  
-    
-    def move_test(self, pos_from: int, list_test: list[dict]) -> None:
-        for test in list_test:
-            card = test['card']
-            for steps in test['list_steps']:
-                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
-                self.move_marble(card=card, pos_from=pos_from, pos_to=pos_to)  
-
-    def move_marble(self, card: str, pos_from: int, pos_to: int) -> None:
-        self.game_server.reset()
-        state = self.game_server.get_state()
-
-        idx_player_active = 0
-        state.idx_player_started = idx_player_active
-        state.idx_player_active = idx_player_active
-        state.bool_card_exchanged = True
-        player = state.list_player[idx_player_active]
-        player.list_card = [card]
-        player.list_marble[0].pos = pos_from
-        player.list_marble[0].is_save = True
-        self.game_server.set_state(state)
-        str_states = str(state)
-
-        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
-        self.game_server.apply_action(action)
-        str_states += f'Action: {action}\n'
-
-        state = self.game_server.get_state()
-        str_states += str(state)
-
-        player = state.list_player[idx_player_active]
-        found = self.get_idx_marble(player=player, pos=pos_to) != -1
-        hint = str_states
-        hint += f'Error: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
-        assert found, hint
-
-    def get_cnt_marbles_in_kennel(self, state: dict, idx_player: int) -> int:
-        cnt_in_kennel = 0
-        player = state.list_player[idx_player]
-        for marble in player.list_marble:
-            if marble.pos >= self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 and \
-                    marble.pos < self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS:
-                cnt_in_kennel += 1
-        return cnt_in_kennel    
-
-    def send_home_test(self, pos_from: int, list_test: list[dict]) -> None:
-        for test in list_test:
-            card = test['card']
-            for steps in test['list_steps']:
-                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
-                for is_own_marble in [True, False]:
-                    self.send_home_marble(card=card, pos_from=pos_from, pos_to=pos_to, is_own_marble=is_own_marble)
-
-    def send_home_marble(self, card: str, pos_from: int, pos_to: int, is_own_marble: bool) -> None:
-        self.game_server.reset()
-        state = self.game_server.get_state()
-
-        idx_player_active = 0
-        state.idx_player_started = idx_player_active
-        state.idx_player_active = idx_player_active
-        state.bool_card_exchanged = True
-        player = state.list_player[idx_player_active]
-        player.list_card = [card]
-        player.list_marble[0].pos = pos_from
-        player.list_marble[0].is_save = True
-        if is_own_marble:
-            player.list_marble[1].pos = pos_to
-            player.list_marble[1].is_save = False
-        else:
-            player = state.list_player[idx_player_active + 1]
-            player.list_marble[0].pos = pos_to
-            player.list_marble[0].is_save = False
-        self.game_server.set_state(state)
-        str_states = str(state)
-
-        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
-        self.game_server.apply_action(action)
-        str_states += f'Action: {action}\n'
-
-        state = self.game_server.get_state()
-        str_states += str(state)
-
-        if is_own_marble:
-            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active)
-            found = cnt_in_kennel == 3
-        else:
-            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active + 1)
-            found = cnt_in_kennel == 4
-        hint = str_states
-        hint += f'Error: Player 2\'s marble must be sent home with card={card}'
-        assert found, hint
-
 
 
     def test_overtake_with_simple_cards(self):
@@ -1787,8 +1690,510 @@ class TestDogBenchmark:
             hint = str_state
             hint += f'Error: Expected {cnt_cards_expected} cards, found {cnt_cards_found} cards.'
             assert cnt_cards_found == cnt_cards_expected, hint
-        
-    # end of helper functions
+            
+    def test_number_of_cards_in_round_2(self):
+        """Test 047: Test number of cards dealt in round 2 [1 point]"""
+        self.start_game_state_at_round_2()
+
+        state = self.game_server.get_state()
+        str_state = str(state)
+
+        for idx_player in range(self.CNT_PLAYERS):
+            cnt_cards_found = len(state.list_player[idx_player].list_card)
+            cnt_cards_expected = 5
+            hint = str_state
+            hint += f'Error: Expected {cnt_cards_expected} cards, found {cnt_cards_found} cards.'
+            assert cnt_cards_found == cnt_cards_expected, hint
+
+    def test_number_of_cards_in_round_5(self):
+        """Test 048: Test number of cards dealt in round 5 [1 point]"""
+        self.game_server.reset()
+
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 4
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        for idx_player in range(self.CNT_PLAYERS):
+            state.list_player[idx_player].list_card = []
+        self.game_server.set_state(state)
+
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+
+        state = self.game_server.get_state()
+        str_state = str(state)
+
+        for idx_player in range(self.CNT_PLAYERS):
+            cnt_cards_found = 0
+            cnt_cards_found = len(state.list_player[idx_player].list_card)
+            cnt_cards_expected = 2
+            hint = str_state
+            hint += f'Error: Expected {cnt_cards_expected} cards, found {cnt_cards_found} cards.'
+            assert cnt_cards_found == cnt_cards_expected, hint
+
+    def test_number_of_cards_in_round_6(self):
+        """Test 049: Test number of cards dealt in round 6 [1 point]"""
+        self.game_server.reset()
+
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 5
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        for idx_player in range(self.CNT_PLAYERS):
+            state.list_player[idx_player].list_card = []
+        self.game_server.set_state(state)
+
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+
+        state = self.game_server.get_state()
+        str_state = str(state)
+
+        for idx_player in range(self.CNT_PLAYERS):
+            cnt_cards_found = 0
+            cnt_cards_found = len(state.list_player[idx_player].list_card)
+            cnt_cards_expected = 6
+            hint = str_state
+            hint += f'Error: Expected {cnt_cards_expected} cards, found {cnt_cards_found} cards.'
+            assert cnt_cards_found == cnt_cards_expected, hint
+
+    def test_stock_out_of_cards(self):
+        """Test 050: Test re-shuffle if stock out of cards [1 point]"""
+        self.game_server.reset()
+
+        state = self.game_server.get_state()
+
+        state.list_card_discard.extend(state.list_card_draw)
+        state.list_card_discard.append(Card(suit='♥', rank='A'))  # additional card was discarded after JKR
+        state.list_card_draw = []
+
+        self.game_server.set_state(state)
+
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+
+        state = self.game_server.get_state()
+        str_state = str(state)
+
+        cnt_cards = len(state.list_card_draw)
+        for player in state.list_player:
+            cnt_cards += len(player.list_card)
+
+        hint = str_state
+        hint += f'Error 1: Sum of cards must remain 110 after re-shuffle.'
+        assert cnt_cards == 110, hint
+
+        hint = str_state
+        hint += f'Error 2: "list_card_discard" should be empty after re-shuffle.'
+        assert len(state.list_card_discard) == 0, hint
+
+    def test_folding_cards(self):
+        """Test 051: Test folding cards when no action possible [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♥', rank='2'), Card(suit='♠', rank='10'), Card(suit='♦', rank='4')]
+        player = state.list_player[idx_player_active + 1]
+        player.list_card = [Card(suit='♥', rank='A')]
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        self.game_server.apply_action(None)
+        str_states += f'Action: None\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        player = state.list_player[idx_player_active]
+
+        hint = str_states
+        hint += 'Error: Player 1 must fold cards without actions.'
+        assert len(player.list_card) == 0, hint
+
+    def test_support_partner_at_the_end(self):
+        """Test 052: Test support partner at the end [1 point]"""
+
+        card = Card(suit='♣', rank='5')
+        for idx_player in range(4):
+
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            state.idx_player_started = idx_player
+            state.idx_player_active = idx_player
+            state.bool_card_exchanged = True
+
+            pos_finish = self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS
+            player = state.list_player[idx_player]
+            player.list_card = [card]
+            for i in range(4):
+                player.list_marble[i].pos = pos_finish + i
+
+            idx_partner = (idx_player + 2) % self.CNT_PLAYERS
+            pos_start = idx_partner * int(self.CNT_STEPS / self.CNT_PLAYERS)
+            player = state.list_player[idx_partner]
+            player.list_marble[0].pos = pos_start
+            player.list_marble[0].is_save = False
+
+            self.game_server.set_state(state)
+            str_states = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+
+            hint = str_states
+            hint += f'Error 1: Player {idx_player+1} must allowed to move with Player {idx_partner+1}\'s marbles'
+            hint += f'\nafter placing his own marbles at the finish.'
+            assert len(list_action_found) > 0, hint
+
+            pos_to = pos_start + 5
+            action = Action(card=card, pos_from=pos_start, pos_to=pos_to)
+            self.game_server.apply_action(action)
+            str_states += f'Action: None\n'
+
+            state = self.game_server.get_state()
+            str_states += str(state)
+
+            player = state.list_player[idx_partner]
+            idx_marble = self.get_idx_marble(player=player, pos=pos_to)
+
+            hint = str_states
+            hint += f'Error 2: Player {idx_player+1} should have moved Player {idx_partner+1}\'s marble'
+            hint += f'\nfrom {pos_start} to {pos_to}.'
+            assert idx_marble != -1, hint
+
+    def test_unique_actions(self):
+        """Test 053: Test if list_action contains unique actions [2 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♣', rank='5'), Card(suit='♣', rank='5')]
+        player.list_marble[0].pos = 0
+
+        self.game_server.set_state(state)
+        str_state = str(state)
+
+        list_action_found = self.game_server.get_list_action()
+
+        hint = str_state
+        hint += f'Error: List of actions contains duplicate actions.'
+        assert len(list_action_found) == 1, hint
+
+    def test_finish_game(self):
+        """Test 054: Test finish game [1 point]"""
+
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.cnt_round = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+
+        for idx_player in [0, 2]:
+            pos_finish = self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS
+            player = state.list_player[idx_player]
+            for idx_marble in range(4):
+                player.list_marble[idx_marble].pos = pos_finish + idx_marble
+
+        player = state.list_player[idx_player_active]
+        player.list_card = [Card(suit='♥', rank='A')]
+        player.list_marble[0].pos = 0
+
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        action = Action(card=Card(suit='♥', rank='A'), pos_from=0, pos_to=68)
+        self.game_server.apply_action(action)
+        str_states += f'Action: None\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        hint = str_states
+        hint += 'Error: Game should be finished.'
+        assert state.phase == GamePhase.FINISHED, hint
+
+        # helper functions our code needs to run
+    def get_idx_marble(self, player: PlayerState, pos: int) -> int:
+        for idx_marble, marble in enumerate(player.list_marble):
+            if marble.pos == pos:
+                return idx_marble
+        return -1
+
+    def get_cnt_marbles_in_kennel(self, state: dict, idx_player: int) -> int:
+        cnt_in_kennel = 0
+        player = state.list_player[idx_player]
+        for marble in player.list_marble:
+            if marble.pos >= self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 and \
+                    marble.pos < self.CNT_STEPS + idx_player * self.CNT_BALLS * 2 + self.CNT_BALLS:
+                cnt_in_kennel += 1
+        return cnt_in_kennel
+
+    def get_sorted_list_action(self, list_action):
+        return sorted(list_action, key=lambda x: (
+            str(x.card),
+            -1 if x.pos_from is None else x.pos_from,
+            -1 if x.pos_to is None else x.pos_to,
+            str(x.card_swap))
+        )
+
+    def get_list_action_as_str(self, list_action):
+        list_action = self.get_sorted_list_action(list_action)
+        return json.dumps([str(action) for action in list_action], indent=4, ensure_ascii=False)
+
+    def start_game_state_at_round_2(self):
+        self.game_server.reset()
+
+        state = self.game_server.get_state()
+
+        idx_player_started = 0
+        state.idx_player_started = idx_player_started
+        state.idx_player_active = idx_player_started
+        state.bool_card_exchanged = True
+        for idx_player in range(self.CNT_PLAYERS):
+            state.list_player[idx_player].list_card = []
+        self.game_server.set_state(state)
+
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+        self.game_server.apply_action(None)
+
+    def move_marble(self, card: str, pos_from: int, pos_to: int) -> None:
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = pos_from
+        player.list_marble[0].is_save = True
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+        self.game_server.apply_action(action)
+        str_states += f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        player = state.list_player[idx_player_active]
+        found = self.get_idx_marble(player=player, pos=pos_to) != -1
+        hint = str_states
+        hint += f'Error: Player 1\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+        assert found, hint
+
+    def move_marble_to_finish(self, card: str, pos_from: int, pos_to: int, idx_player: int, steps: int) -> None:
+
+        list_is_save = [True, False]  # on path
+        if pos_from > self.CNT_STEPS:
+            list_is_save = [False]  # inside finish
+
+        for is_save in list_is_save:
+
+            self.game_server.reset()
+            state = self.game_server.get_state()
+
+            state.idx_player_started = idx_player
+            state.idx_player_active = idx_player
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player]
+            player.list_card = [card]
+            player.list_marble[0].pos = pos_from
+            player.list_marble[0].is_save = is_save
+            self.game_server.set_state(state)
+            str_states = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+
+            if is_save:
+                hint = str_states
+                hint += 'Error 1: "get_list_action" result is wrong.'
+                hint += f'\nAction not allowed: {action}'
+                hint += f'\nHint: Player 1 can not move to finish directly from Start (is_save=True).'
+                assert action not in list_action_found, hint
+
+            else:
+                if steps > 0:
+
+                    hint = str_states
+                    hint += 'Error 2: "get_list_action" result is wrong'
+                    hint += f'\nAction missing: {action}'
+                    assert action in list_action_found, hint
+
+                    self.game_server.apply_action(action)
+                    str_states += f'Action: {action}\n'
+
+                    state = self.game_server.get_state()
+                    str_states += str(state)
+
+                    player = state.list_player[idx_player]
+                    found = self.get_idx_marble(player=player, pos=pos_to) != -1
+                    hint = str_states
+                    hint += f'Error 3: Player {idx_player+1}\'s marble must be moved from pos={pos_from} to pos={pos_to} with card={card}'
+                    assert found, hint
+
+                else:
+                    hint = str_states
+                    hint += 'Error 4: "get_list_action" result is wrong.'
+                    hint += f'\nAction not allowed: {action}'
+                    hint += f'\nHint: Player 1 can not move backwards into finish.'
+                    assert action not in list_action_found, hint
+
+    def move_marble_to_blocked_finish(self, card: str, pos_from: int, pos_to: int, idx_player: int) -> None:
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        for offset in [0, 1]:
+            state.idx_player_started = idx_player
+            state.idx_player_active = idx_player
+            state.bool_card_exchanged = True
+            player = state.list_player[idx_player]
+            player.list_card = [card]
+            player.list_marble[0].pos = pos_from
+            player.list_marble[0].is_save = False
+            player.list_marble[1].pos = pos_to - offset
+            player.list_marble[1].is_save = False
+            self.game_server.set_state(state)
+            str_state = str(state)
+
+            list_action_found = self.game_server.get_list_action()
+            action = Action(card=card, pos_from=pos_from, pos_to=pos_to - offset)
+
+            hint = str_state
+            hint += 'Error: "get_list_action" result is wrong.'
+            hint += f'\nAction not allowed: {action}'
+            if offset == 0:
+                hint += f'\nHint: Player 1 can not kick out marbles in finish.'
+            else:
+                hint += f'\nHint: Player 1 can not overtake marbles in finish.'
+            assert action not in list_action_found, hint
+
+    def overtake_marble(self, card: str, pos_from: int, pos_to: int) -> None:
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = pos_from
+        player.list_marble[0].is_save = True
+        player = state.list_player[idx_player_active + 1]
+        player.list_card = [card]
+        player.list_marble[0].pos = pos_from + 1
+        player.list_marble[0].is_save = False
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+        self.game_server.apply_action(action)
+        str_states += f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        player = state.list_player[idx_player_active + 1]
+        found = self.get_idx_marble(player=player, pos=pos_from + 1) != -1
+        hint = str_states
+        hint += f'Error: Player 2\'s marble must be sent to kennel from pos={pos_from + 1}'
+        assert found, hint
+
+    def send_home_marble(self, card: str, pos_from: int, pos_to: int, is_own_marble: bool) -> None:
+        self.game_server.reset()
+        state = self.game_server.get_state()
+
+        idx_player_active = 0
+        state.idx_player_started = idx_player_active
+        state.idx_player_active = idx_player_active
+        state.bool_card_exchanged = True
+        player = state.list_player[idx_player_active]
+        player.list_card = [card]
+        player.list_marble[0].pos = pos_from
+        player.list_marble[0].is_save = True
+        if is_own_marble:
+            player.list_marble[1].pos = pos_to
+            player.list_marble[1].is_save = False
+        else:
+            player = state.list_player[idx_player_active + 1]
+            player.list_marble[0].pos = pos_to
+            player.list_marble[0].is_save = False
+        self.game_server.set_state(state)
+        str_states = str(state)
+
+        action = Action(card=card, pos_from=pos_from, pos_to=pos_to)
+        self.game_server.apply_action(action)
+        str_states += f'Action: {action}\n'
+
+        state = self.game_server.get_state()
+        str_states += str(state)
+
+        if is_own_marble:
+            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active)
+            found = cnt_in_kennel == 3
+        else:
+            cnt_in_kennel = self.get_cnt_marbles_in_kennel(state=state, idx_player=idx_player_active + 1)
+            found = cnt_in_kennel == 4
+        hint = str_states
+        hint += f'Error: Player 2\'s marble must be sent home with card={card}'
+        assert found, hint
+
+    def move_test(self, pos_from: int, list_test: list[dict]) -> None:
+        for test in list_test:
+            card = test['card']
+            for steps in test['list_steps']:
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                self.move_marble(card=card, pos_from=pos_from, pos_to=pos_to)
+
+    def overtake_test(self, pos_from: int, list_test: list[dict]) -> None:
+        for test in list_test:
+            card = test['card']
+            for steps in test['list_steps']:
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                self.overtake_marble(card=card, pos_from=pos_from, pos_to=pos_to)
+
+    def send_home_test(self, pos_from: int, list_test: list[dict]) -> None:
+        for test in list_test:
+            card = test['card']
+            for steps in test['list_steps']:
+                pos_to = (pos_from + steps + self.CNT_STEPS) % self.CNT_STEPS
+                for is_own_marble in [True, False]:
+                    self.send_home_marble(card=card, pos_from=pos_from, pos_to=pos_to, is_own_marble=is_own_marble)
+
+
     # add new tests above helper functions block
         
 if __name__ == '__main__':
