@@ -77,6 +77,7 @@ class GameState(BaseModel):
         '2', '3', '4', '5', '6', '7', '8', '9', '10',
         'J', 'Q', 'K', 'A', 'JKR'
     ]
+    # Define a single deck of 55 cards (will be doubled in reset())
     LIST_CARD: ClassVar[List[Card]] = [
         Card(suit='♠', rank='2'), Card(suit='♥', rank='2'), Card(suit='♦', rank='2'), Card(suit='♣', rank='2'),
         Card(suit='♠', rank='3'), Card(suit='♥', rank='3'), Card(suit='♦', rank='3'), Card(suit='♣', rank='3'),
@@ -92,7 +93,7 @@ class GameState(BaseModel):
         Card(suit='♠', rank='K'), Card(suit='♥', rank='K'), Card(suit='♦', rank='K'), Card(suit='♣', rank='K'),
         Card(suit='♠', rank='A'), Card(suit='♥', rank='A'), Card(suit='♦', rank='A'), Card(suit='♣', rank='A'),
         Card(suit='', rank='JKR'), Card(suit='', rank='JKR'), Card(suit='', rank='JKR')
-    ] * 2
+    ]
 
 
     cnt_player: int = 4
@@ -136,11 +137,16 @@ class Dog(Game):
         self._state = None
         self.reset()
 
-    # State Management Methods
     def reset(self) -> None:
         """Reset the game state."""
-        # Initialize cards
-        all_cards = list(GameState.LIST_CARD)
+        # Create exactly 110 cards (2 decks of 55 cards each)
+        all_cards = []
+        for _ in range(2):  # Two decks
+            for card in GameState.LIST_CARD:
+                all_cards.append(copy.deepcopy(card))
+        
+        # Verify we have exactly 110 cards
+        assert len(all_cards) == 110, f"Deck initialization error: got {len(all_cards)} cards instead of 110"
         random.shuffle(all_cards)
         
         # Always start with 6 cards per player in initial state
@@ -173,50 +179,60 @@ class Dog(Game):
             seven_player_idx=None
         )
 
-    def apply_action(self, action: Optional[Action]) -> None:
-        """Apply the given action to the game state."""
-        state = self._state
+        # Validate total card count
+        total_cards = len(self._state.list_card_draw)
+        for player in self._state.list_player:
+            total_cards += len(player.list_card)
         
-        # Handle None action (folding or passing)
+        assert total_cards == 110, f"Total card count error: {total_cards} cards instead of 110"
+
+
+    def apply_action(self, action: Optional[Action]) -> None:
+        state = self._state
+
+        
+        def validate_total_cards():
+            """Ensure total cards remain at 110."""
+            total_cards = len(state.list_card_draw) + len(state.list_card_discard)
+            for p in state.list_player:
+                total_cards += len(p.list_card)
+            
+            if total_cards != 110:
+                logging.warning(f"Card count deviation: {total_cards} cards instead of 110")
+                # Attempt to correct by removing excess from discard pile
+                if total_cards > 110:
+                    excess = total_cards - 110
+                    state.list_card_discard = state.list_card_discard[:-excess]
+
         if action is None:
             if not state.bool_card_exchanged:
-                # Check if we need to reshuffle
-                if len(state.list_card_draw) == 0:
-                    # Save all cards before reshuffling
-                    all_cards = state.list_card_discard[:]
-                    state.list_card_discard.clear()
-                    state.list_card_draw = all_cards
-                    random.shuffle(state.list_card_draw)
-
-                # Draw cards for active player
                 active_player = state.list_player[state.idx_player_active]
                 cards_needed = 6 - len(active_player.list_card)
                 
                 if cards_needed > 0:
-                    # If draw pile is empty, reshuffle discard pile
-                    if len(state.list_card_draw) < cards_needed and len(state.list_card_discard) > 0:
-                        state.list_card_draw.extend(state.list_card_discard)
-                        state.list_card_discard.clear()
+                    # Reshuffle if draw pile is empty
+                    if len(state.list_card_draw) == 0 and len(state.list_card_discard) > 0:
+                        state.list_card_draw = state.list_card_discard[:]
+                        state.list_card_discard = []
                         random.shuffle(state.list_card_draw)
                     
                     # Draw cards
                     while len(active_player.list_card) < 6 and len(state.list_card_draw) > 0:
                         active_player.list_card.append(state.list_card_draw.pop())
+                    
+                    # Validate card count after drawing
+                    validate_total_cards()
 
-                # Move to next player
-                state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
-                
-                # Check if all players have their cards
-                all_players_have_cards = True
-                for player in state.list_player:
-                    if len(player.list_card) < 6:
-                        all_players_have_cards = False
-                        break
-                
-                if all_players_have_cards:
-                    state.bool_card_exchanged = True
-                    state.idx_player_active = state.idx_player_started
-                return
+                    # Move to next player
+                    state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
+                    
+                    # Check if all players have their cards
+                    all_players_have_cards = all(len(player.list_card) == 6 for player in state.list_player)
+                    
+                    if all_players_have_cards:
+                        state.bool_card_exchanged = True
+                        state.idx_player_active = state.idx_player_started
+                    return
 
             # Handle SEVEN card passing
             if state.card_active and state.card_active.rank == '7':
@@ -229,7 +245,7 @@ class Dog(Game):
                 state.seven_player_idx = None
                 state.idx_player_active = (state.idx_player_active + 1) % state.cnt_player
                 return
-                
+                    
             # Handle regular fold
             player = state.list_player[state.idx_player_active]
             if len(player.list_card) > 0:
@@ -242,11 +258,6 @@ class Dog(Game):
             if state.idx_player_active == state.idx_player_started:
                 all_cards_played = all(len(p.list_card) == 0 for p in state.list_player)
                 if all_cards_played:
-                    # Ensure all cards are collected before new round
-                    if len(state.list_card_draw) == 0:
-                        state.list_card_draw = state.list_card_discard[:]
-                        state.list_card_discard.clear()
-                        random.shuffle(state.list_card_draw)
                     self._start_new_round()
             return
 
@@ -370,55 +381,39 @@ class Dog(Game):
 
 
     def _start_new_round(self) -> None:
-        """Start a new round of the game."""
         state = self._state
         state.cnt_round += 1
+        state.bool_card_exchanged = False
         
-        # Get cards per player for this round
-        cards_per_player = self._get_cards_per_round(state.cnt_round)
-        cards_needed = cards_per_player * state.cnt_player
+        # Create a fresh deck of 110 cards
+        all_cards = []
+        for _ in range(2):  # Two decks
+            for card in GameState.LIST_CARD:
+                all_cards.append(copy.deepcopy(card))
         
-        # Before reshuffling, ensure all cards are accounted for
-        total_cards = len(state.list_card_draw) + len(state.list_card_discard)
-        for player in state.list_player:
-            total_cards += len(player.list_card)
+        # Verify we have exactly 110 cards
+        assert len(all_cards) == 110, f"Deck initialization error: got {len(all_cards)} cards instead of 110"
+        random.shuffle(all_cards)
         
-        # If draw pile doesn't have enough cards, reshuffle all cards
-        if len(state.list_card_draw) < cards_needed:
-            # Collect all cards
-            all_cards = []
-            
-            # Get cards from discard pile
-            all_cards.extend(state.list_card_discard)
-            state.list_card_discard = []
-            
-            # Get cards from draw pile
-            all_cards.extend(state.list_card_draw)
-            state.list_card_draw = []
-            
-            # Get cards from players
-            for player in state.list_player:
-                all_cards.extend(player.list_card)
-                player.list_card = []
-            
-            # Shuffle all collected cards
-            random.shuffle(all_cards)
-            
-            # Put all cards in draw pile
-            state.list_card_draw = all_cards
-        
-        # Deal new cards
+        # Clear all player hands
         for player in state.list_player:
             player.list_card = []
-            for _ in range(cards_per_player):
-                if state.list_card_draw:
-                    player.list_card.append(state.list_card_draw.pop(0))
-                else:
-                    state.bool_game_finished = True
-                    return
+        
+        # Reset draw and discard piles
+        state.list_card_draw = all_cards
+        state.list_card_discard = []
+        
+        # Deal new cards
+        cards_per_player = self._get_cards_per_round(state.cnt_round)
+        for i, player in enumerate(state.list_player):
+            start_idx = i * cards_per_player
+            end_idx = start_idx + cards_per_player
+            player.list_card = state.list_card_draw[start_idx:end_idx]
+        
+        # Remove dealt cards from draw pile
+        state.list_card_draw = state.list_card_draw[4 * cards_per_player:]
         
         # Reset round state
-        state.bool_card_exchanged = False
         state.card_active = None
         state.seven_steps_remaining = None
         state.seven_backup_state = None
@@ -427,6 +422,13 @@ class Dog(Game):
         # Update starting player
         state.idx_player_started = (state.idx_player_started + 1) % state.cnt_player
         state.idx_player_active = state.idx_player_started
+
+        # Validate total card count
+        total_cards = len(state.list_card_draw)
+        for player in state.list_player:
+            total_cards += len(player.list_card)
+        
+        assert total_cards == 110, f"Total card count error in round {state.cnt_round}: {total_cards} cards instead of 110"
         
 
     def _handle_marble_capture(self, pos_to: int, pos_from: Optional[int] = None) -> None:
@@ -645,10 +647,17 @@ class Dog(Game):
     # Special Game State Methods
     def start_game_state_at_round_2(self):
         """Set up game state for round 2 with differing 'idx_player_started' and 'idx_player_active'."""
-        all_cards = GameState.LIST_CARD.copy()
+        # Create exactly 110 cards 
+        all_cards = []
+        for _ in range(2):  # Two decks
+            for card in GameState.LIST_CARD:
+                all_cards.append(copy.deepcopy(card))
+        
+        # Verify we have exactly 110 cards
+        assert len(all_cards) == 110, f"Deck initialization error: got {len(all_cards)} cards instead of 110"
         random.shuffle(all_cards)
 
-        # Assign 5 cards to each player, assuming round 2 setup
+        # Assign 5 cards to each player, for round 2
         players = []
         for i in range(4):
             player_cards = all_cards[i * 5:(i + 1) * 5]
@@ -663,7 +672,7 @@ class Dog(Game):
         idx_started = 0
         idx_active = (idx_started + 1) % 4  # Ensure different from idx_started
 
-        # Set game state for round 2
+        # Create game state for round 2
         self._state = GameState(
             cnt_player=4,
             phase=GamePhase.RUNNING,
@@ -676,9 +685,13 @@ class Dog(Game):
             list_card_draw=all_cards[20:],  # Remaining cards go to draw pile
             list_card_discard=[]
         )
-        # Log state for debugging
-        print("Debug State at Round 2 Start:")
-        print("Started:", self._state.idx_player_started, "Active:", self._state.idx_player_active)
+
+        # Validate total card count
+        total_cards = len(self._state.list_card_draw)
+        for player in self._state.list_player:
+            total_cards += len(player.list_card)
+        
+        assert total_cards == 110, f"Total card count error: {total_cards} cards instead of 110"
        
 
     def get_list_action(self) -> List[Action]:
